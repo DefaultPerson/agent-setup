@@ -39,8 +39,16 @@ My universal setup for [Claude Code](https://docs.anthropic.com/en/docs/claude-c
 
 ## ⚡ Quick Start
 
+Paste this into Claude Code and it will set everything up:
+
+```
+Clone https://github.com/DefaultPerson/claude-code-setup and install it globally into ~/.claude/ (hooks, commands, settings, mcp). Read the repo's README.md for full context. Replace all placeholder paths with real ones. Ask me interactively for any API keys and preferences (language, notifications). After setup, read the README again and offer to apply optional extras (LSP plugins, shell aliases, agent-browser). Verify everything works at the end.
+```
+
+### Manual Setup
+
 ```bash
-git clone https://github.com/user/claude-code-setup.git
+git clone https://github.com/DefaultPerson/claude-code-setup.git
 cd claude-code-setup
 
 cp .mcp.json.sample .mcp.json              # Windows: .mcp.json.windows
