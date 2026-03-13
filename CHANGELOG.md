@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [0.6.0] - 2026-03-11
+## 2026-03-11
 
 ### Fixed
 
@@ -42,7 +42,7 @@ All notable changes to this project will be documented in this file.
 - **utils/tts/** — removed ElevenLabs, OpenAI, and pyttsx3 TTS scripts (replaced by cached MP3 playback)
 - **.env.example** — removed (all env vars now in settings.json)
 
-## [0.5.0] - 2026-02-06
+## 2026-02-06
 
 ### Added
 
@@ -65,7 +65,7 @@ All notable changes to this project will be documented in this file.
 - **enabledMcpjsonServers** — removed redundant empty array from project settings
 - **docs/** — folder removed; content consolidated into CLAUDE.md and root README
 
-## [0.4.0] - 2025-12-30
+## 2025-12-30
 
 ### Added
 
@@ -96,7 +96,7 @@ All notable changes to this project will be documented in this file.
 - **.claude/settings.example.json** — typo `youre` → `your`
 - **pre_compact.py** — user messages rendered character-by-character when `content` was string instead of array
 
-## [0.3.0] - 2025-12-29
+## 2025-12-29
 
 ### Added
 
@@ -117,7 +117,7 @@ All notable changes to this project will be documented in this file.
 
 - **`/load-context`** — removed slash command (use memory.md directly)
 
-## [0.2.0] - 2025-12-27
+## 2025-12-27
 
 ### Added
 
@@ -153,7 +153,7 @@ All notable changes to this project will be documented in this file.
 - **`.claude/settings.json`** — moved to template (`settings.example.json`)
 - **Verbose README sections** — installation commands, file structure, hooks reference, env variables table
 
-## [0.1.0] - 2025-12-26
+## 2025-12-26
 
 ### Added
 
