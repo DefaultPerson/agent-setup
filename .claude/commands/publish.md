@@ -7,7 +7,7 @@ Interactive repo publication workflow. Uses `gh` CLI for everything.
 ## Algorithm
 
 1. **Detect state**: `git remote -v` — check if `origin` points to GitHub.
-   - **New repo** (no origin): full creation flow (steps 2-10).
+   - **New repo** (no origin): full creation flow (steps 2-13).
    - **Existing repo** (origin exists): update flow — go to step 2 to review/update settings.
    - **No git repo**: `git init` first.
 
@@ -19,6 +19,8 @@ Interactive repo publication workflow. Uses `gh` CLI for everything.
    - **GitHub Pages**: Yes (MkDocs Material) / No / Keep current
    - **Dependabot**: Enable dependency updates? Yes / No / Keep current
    - **CI workflow**: Set up GitHub Actions CI? Yes (auto-detect stack) / No / Keep current
+   - **`.gitignore`**: Generate smart .gitignore? Yes (auto-detect stack + scan repo) / No / Keep current
+   - **README.md**: Scaffold README if missing? Yes / No
 
 3. **Auto-detect** (no user input needed):
    - **Repo name**: from current directory name
@@ -70,11 +72,84 @@ Interactive repo publication workflow. Uses `gh` CLI for everything.
    - Use latest stable language versions
    - Commit and push
 
-10. **Polish** (automatic):
-    - Check `.gitignore` exists — create basic one if missing
-    - Suggest social preview image if repo is public
+10. **`.gitignore`** (if selected):
+    - **A) Stack-based templates** — reuse stack detection from step 3, fetch from GitHub API:
+      - `package.json` → `Node`
+      - `pyproject.toml` / `requirements.txt` / `setup.py` → `Python`
+      - `go.mod` → `Go`
+      - `Cargo.toml` → `Rust`
+      - `composer.json` → `Composer`
+      - `Gemfile` → `Ruby`
+      - `*.sln` / `*.csproj` → `VisualStudio`
+      - `build.gradle` / `pom.xml` → `Gradle` / `Maven`
+      ```bash
+      gh api gitignore/templates/Node --jq .source
+      gh api gitignore/templates/Python --jq .source
+      ```
+    - **B) Common block** (always prepend — not available via API):
+      ```gitignore
+      # OS & Editor
+      .DS_Store
+      Thumbs.db
+      *.swp
+      *.swo
+      *~
+      .idea/
+      .vscode/
+      *.sublime-project
+      *.sublime-workspace
 
-11. **Output**:
+      # Environment
+      .env
+      .env.*
+      !.env.example
+
+      # Build artifacts
+      dist/
+      build/
+      out/
+      ```
+    - **C) Repo scan** — analyze actual repo contents for things that should be ignored:
+      - Run `git ls-files --others --directory` to find untracked files/dirs
+      - Check tracked files with `git ls-files` for items that shouldn't be in VCS
+      - Look for: `node_modules/`, `__pycache__/`, `.venv/`, `venv/`, `.tox/`, `*.egg-info/`, `target/` (Rust), `vendor/` (Go), `.terraform/`, `*.sqlite3`, `coverage/`, `.nyc_output/`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, `.next/`, `.nuxt/`, `.output/`, secrets (`*.key`, `*.pem`, `credentials.*`), heavy binaries, DB dumps
+      - Show user what was found and confirm before adding
+    - **D) Merge logic**:
+      - No `.gitignore` exists → create from A + B + C
+      - `.gitignore` exists → AskUserQuestion: Overwrite / Merge (append only new patterns) / Skip
+    - Commit and push
+
+11. **README.md** (if selected and missing or empty):
+    - Generate from project metadata:
+      ```markdown
+      # {repo-name}
+
+      {description from step 2}
+
+      ## Installation
+
+      {based on detected stack:}
+      - Node.js: `npm install`
+      - Python: `pip install -e .` / `uv pip install -e .`
+      - Go: `go install ./...`
+      - Rust: `cargo build`
+      - Generic: manual instructions placeholder
+
+      ## Usage
+
+      <!-- TODO: Add usage examples -->
+
+      ## License
+
+      {license name, linked to LICENSE file}
+      ```
+    - If README.md exists and is non-empty: skip (never overwrite)
+    - Commit and push
+
+12. **Polish** (automatic):
+    - If repo is public: suggest setting a social preview image
+
+13. **Output**:
     ```
     Repo: https://github.com/<owner>/<name>
     Visibility: public/private
@@ -83,5 +158,7 @@ Interactive repo publication workflow. Uses `gh` CLI for everything.
     Pages: enabled at https://<owner>.github.io/<name>
     Dependabot: enabled (npm, pip, github-actions)
     CI: enabled (.github/workflows/ci.yml)
+    .gitignore: created (Node + Python + 3 patterns from repo scan)
+    README: scaffolded / already exists
     Changes: [list of what was created/updated]
     ```
