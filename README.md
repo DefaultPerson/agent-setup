@@ -28,7 +28,7 @@ Prerequisites: Node.js 18+, uv (python package manager), ffmpeg or mpv (audio fo
 7. Add shell aliases from the README to user's shell profile
 8. Ask me for any preferences
 9. Verify everything works
-10. cd .. && rm -rf claude-code-setup (repo no longer needed after setup)
+10. Delete claude-code-setup (repo no longer needed after setup)
 ```
 
 ## Recommended Plugins
