@@ -78,9 +78,7 @@ def main():
 
     parts = []
 
-    if session_name:
-        parts.append(f"\033[36m{session_name}{R}")
-    elif folder:
+    if folder:
         parts.append(f"{D}{folder}{R}")
 
     if branch:
@@ -88,25 +86,28 @@ def main():
 
     parts.append(f"{CL}{model}{R}")
 
+    # Rate limits — compact [5h/7d%]
+    rl5 = five_hour.get("used_percentage")
+    rl7 = seven_day.get("used_percentage")
+    if rl5 is not None:
+        worst = max(rl5, rl7 or 0)
+        if worst < 50:
+            rl_color = "\033[32m"
+        elif worst < 80:
+            rl_color = "\033[33m"
+        else:
+            rl_color = "\033[31m"
+        rl_text = f"{rl5:.0f}/{rl7:.0f}%" if rl7 is not None else f"{rl5:.0f}%"
+        parts.append(f"{rl_color}[{rl_text}]{R}")
+
     # Context bar
     if pct is not None:
         bar, color = format_bar(pct)
         if remaining_pct is not None:
             remaining_k = int(remaining_pct * ctx_window.get("context_window_size", 200_000) / 100 / 1000)
-            parts.append(f"{bar} {color}~{remaining_k}k left{R}")
+            parts.append(f"{bar} {color}{remaining_k}k{R}")
         else:
             parts.append(f"{bar} {color}{pct:.0f}%{R}")
-
-    # Rate limits (compact)
-    if five_hour.get("used_percentage") is not None:
-        rl_pct = five_hour["used_percentage"]
-        if rl_pct < 50:
-            rl_color = "\033[32m"
-        elif rl_pct < 80:
-            rl_color = "\033[33m"
-        else:
-            rl_color = "\033[31m"
-        parts.append(f"{rl_color}5h:{rl_pct:.0f}%{R}")
 
     print(SEP.join(parts))
 
