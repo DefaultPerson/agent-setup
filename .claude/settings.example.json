@@ -4,27 +4,27 @@
       "matcher": "Bash",
       "hooks": [{
         "type": "command",
-        "command": "uv run /home/user/project/.claude/hooks/guard.py"
+        "command": "uv run \"$HOME/.claude/hooks/guard.py\""
       }]
     }, {
       "matcher": "Edit|Write|MultiEdit",
       "hooks": [{
         "type": "command",
-        "command": "uv run /home/user/project/.claude/hooks/guard.py"
+        "command": "uv run \"$HOME/.claude/hooks/guard.py\""
       }]
     }],
     "Stop": [{
       "matcher": "",
       "hooks": [{
         "type": "command",
-        "command": "uv run /home/user/project/.claude/hooks/notification.py --notify"
+        "command": "uv run \"$HOME/.claude/hooks/notification.py\" --notify"
       }]
     }],
     "Notification": [{
       "matcher": "",
       "hooks": [{
         "type": "command",
-        "command": "uv run /home/user/project/.claude/hooks/notification.py --permission"
+        "command": "uv run \"$HOME/.claude/hooks/notification.py\" --permission"
       }]
     }]
   },
@@ -36,13 +36,14 @@
   "enableAllProjectMcpServers": true,
   "statusLine": {
     "type": "command",
-    "command": "uv run /home/user/project/.claude/hooks/statusline.py",
+    "command": "uv run \"$HOME/.claude/hooks/statusline.py\"",
     "padding": 0
   },
   "env": {
-    "CONTEXT7_API_KEY": "paste_your_token",
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
-    "TTS_LANGUAGE": "en",
-    "DESKTOP_NOTIFICATIONS": "true"
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "attribution": {
+    "commit": "",
+    "pr": ""
   }
 }

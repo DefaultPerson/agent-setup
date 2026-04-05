@@ -82,34 +82,37 @@ Skip clarification if topic is clear enough to proceed.
 
 #### Step 1: Parallel Subagent Research (MANDATORY for complex topics)
 
-**CRITICAL**: You MUST use the Task tool to spawn parallel agents. This is the ONLY way to achieve true parallelism and depth.
+**CRITICAL**: You MUST use the Agent tool to spawn parallel agents. This is the ONLY way to achieve true parallelism and depth.
 
-For each major subtopic from Phase 0, launch a dedicated agent in a **SINGLE message**:
+For each major subtopic from Phase 0, launch a dedicated agent with `run_in_background: true`:
 
 ```
-Launch 2-3 agents in ONE message (parallel execution):
+Launch 2-3 agents in parallel (run_in_background: true):
 
-Task(
+Agent(
   subagent_type="general-purpose",
   description="Research {topic} definition",
-  prompt="Research subtopic: What is {topic}? Find: definition, core concepts, how it works. Use WebSearch and WebFetch. Return structured findings with sources. Be thorough."
+  prompt="Research subtopic: What is {topic}? Find: definition, core concepts, how it works. Use WebSearch and WebFetch. Return structured findings with sources. Be thorough.",
+  run_in_background=true
 )
 
-Task(
+Agent(
   subagent_type="general-purpose",
   description="Research {topic} alternatives",
-  prompt="Research subtopic: Alternatives to {topic}. Search for competitors, compare features/pricing. Use site:github.com for open-source options. Return structured findings with sources."
+  prompt="Research subtopic: Alternatives to {topic}. Search for competitors, compare features/pricing. Use site:github.com for open-source options. Return structured findings with sources.",
+  run_in_background=true
 )
 
-Task(
+Agent(
   subagent_type="general-purpose",
   description="Research {topic} problems",
-  prompt="Research subtopic: Problems with {topic}. Search HN (site:news.ycombinator.com), Reddit (site:reddit.com) for real user complaints and limitations. Return structured findings with sources."
+  prompt="Research subtopic: Problems with {topic}. Search HN (site:news.ycombinator.com), Reddit (site:reddit.com) for real user complaints and limitations. Return structured findings with sources.",
+  run_in_background=true
 )
 ```
 
 **Rules for parallel research**:
-- Launch 2-3 agents in ONE message (this triggers parallel execution)
+- Launch 2-3 agents with `run_in_background: true` for parallel execution
 - Each agent gets ONE focused subtopic
 - Agents should use WebSearch, WebFetch, Context7
 - Wait for all agents to complete before moving to Step 2
@@ -153,7 +156,7 @@ For key facts (pricing, performance, features):
 - **WebSearch**: Primary search tool for discovery
 - **WebFetch**: Deep reading of specific pages (docs, pricing, features)
 - **Context7**: Library/framework documentation lookup
-- **Task**: Parallel subagent research for subtopics
+- **Agent**: Parallel subagent research (subagent_type: general-purpose, run_in_background: true)
 
 #### Atomic Writes
 

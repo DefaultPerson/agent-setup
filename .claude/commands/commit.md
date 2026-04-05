@@ -1,6 +1,14 @@
 ---
+allowed-tools: Bash(git *), Bash(gh *)
 description: Create a Conventional Commit safely.
 ---
+
+## Context
+
+- Status: !`git status`
+- Diff: !`git diff HEAD`
+- Branch: !`git branch --show-current`
+- Recent commits: !`git log --oneline -10`
 
 $ARGUMENTS
 

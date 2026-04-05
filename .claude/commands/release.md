@@ -1,6 +1,14 @@
 ---
+allowed-tools: Bash(git *), Bash(gh *)
 description: Create a GitHub release with auto-generated changelog.
 ---
+
+## Context
+
+- Branch: !`git branch --show-current`
+- Last tag: !`git describe --tags --abbrev=0 2>/dev/null || echo "No tags"`
+- Commits since tag: !`git log $(git describe --tags --abbrev=0 2>/dev/null || echo HEAD~20)..HEAD --oneline 2>/dev/null | head -20`
+- CHANGELOG exists: !`test -f CHANGELOG.md && echo "Yes" || echo "No"`
 
 $ARGUMENTS
 

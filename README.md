@@ -1,146 +1,69 @@
 # Claude Code Setup
 
-My universal setup for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with hooks, MCPs, etc...
+Universal setup for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) — security hooks, notifications, status line, and productivity commands.
 
-## 📑 Contents
+## Features
 
-- [Claude Code Setup](#claude-code-setup)
-  - [📑 Contents](#-contents)
-  - [🚀 Features](#-features)
-  - [📋 Prerequisites](#-prerequisites)
-  - [⚡ Quick Start](#-quick-start)
-  - [🔌 LSP Plugins (Optional)](#-lsp-plugins-optional)
-  - [🌍 Global Installation (Optional+Recommended)](#-global-installation-optionalrecommended)
-  - [💻 Shell Aliases (Optional)](#-shell-aliases-optional)
-  - [💡 Tips](#-tips)
-  - [🌐 Agent Browser](#-agent-browser)
-
-## 🚀 Features
-
-- **Security Guard** — blocks dangerous commands (`rm -rf /`, `.env` writes, privileged docker, etc.)
+- **Security Guard** — blocks dangerous commands (`rm -rf /`, credential reads, privileged docker, etc.)
 - **TTS Notifications** — cached voice alerts when Claude finishes or needs input
 - **Desktop Notifications** — native OS notifications (Linux, macOS, Windows)
-- **Status Line** — shows project, branch, model, and context usage
+- **Status Line** — project, branch, model, context usage, rate limits
 - **Slash Commands** — `/research`, `/ultrathink`, `/commit`, `/push-and-pr`, `/prime`, `/publish`, `/release`
-- **MCP Servers** — context7
-- **LSP Plugins** — TypeScript, Python (Pyright), Go (gopls) for better code understanding
 - **Cross-platform** — Linux, macOS, Windows
 
----
+## Setup
 
-## 📋 Prerequisites
-
-- **Node.js** 18+
-- **uv** (Python package manager)
-- **ffmpeg** or **mpv** (audio player for TTS)
-- **Claude Code CLI**: `npm install -g @anthropic-ai/claude-code`
-
----
-
-## ⚡ Quick Start
-
-Paste this into Claude Code and it will set everything up:
+Paste into Claude Code — or follow the steps manually:
 
 ```
-Clone https://github.com/DefaultPerson/claude-code-setup and install it globally into ~/.claude/ (hooks, commands, settings, mcp). Read the repo's README.md for full context. Replace all placeholder paths with real ones. Ask me interactively for any API keys and preferences (language, notifications). After setup, read the README again and offer to apply optional extras (LSP plugins, shell aliases, agent-browser). Verify everything works at the end.
+Prerequisites: Node.js 18+, uv (python package manager), ffmpeg or mpv (audio for TTS).
+
+1. git clone https://github.com/DefaultPerson/claude-code-setup.git && cd claude-code-setup
+2. cp -r .claude/hooks ~/.claude/hooks
+3. cp -r .claude/commands ~/.claude/commands
+4. cp .claude/settings.example.json ~/.claude/settings.json
+   # Windows: cp .claude/settings.local.json.windows "$env:USERPROFILE/.claude/settings.json"
+5. Install recommended plugins from the README
+6. Add shell aliases from the README to user's shell profile
+7. Ask me for any preferences
+8. Verify everything works
 ```
 
-### Manual Setup
+## Recommended Plugins
 
 ```bash
-git clone https://github.com/DefaultPerson/claude-code-setup.git
-cd claude-code-setup
+# Documentation lookup
+claude /install-plugin context7@claude-plugins-official
 
-cp .mcp.json.sample .mcp.json              # Windows: .mcp.json.windows
-cp .claude/settings.example.json .claude/settings.json
-```
-
-Edit files — replace paths and API keys (see `.mcp.json.sample`).
-
-Replace `/home/user/project` in `settings.json` with your path:
-
-```bash
-sed -i 's|/home/user/project|'"$(pwd)"'|g' .claude/settings.json   # Linux
-sed -i '' 's|/home/user/project|'"$(pwd)"'|g' .claude/settings.json # macOS
-```
-
-Start Claude:
-
-```bash
-claude
-```
-
----
-
-## 🔌 LSP Plugins (Optional)
-
-Enable LSP for better code analysis (types, definitions, errors):
-
-```bash
+# LSP for code analysis (requires language servers installed)
 claude /install-plugin typescript-lsp@claude-plugins-official
 claude /install-plugin pyright-lsp@claude-plugins-official
 claude /install-plugin gopls-lsp@claude-plugins-official
+
+# Context optimization — keeps raw tool output out of context window
+# https://github.com/mksglu/context-mode
+claude /install-plugin context-mode
+
+# Browser automation for AI agents
+# https://github.com/vercel-labs/agent-browser
+claude /install-skill agent-browser@vercel-labs/agent-browser
 ```
 
-Requires language servers installed: `npm i -g typescript`, `pip install pyright`, `go install golang.org/x/tools/gopls@latest`.
+## Shell Aliases
 
----
-
-## 🌍 Global Installation (Optional+Recommended)
-
-Apply hooks to **all projects**:
+Add to `.bashrc` / `.zshrc`:
 
 ```bash
-cp -r .claude/hooks ~/.claude/hooks
-cp .claude/settings.example.json ~/.claude/settings.json
-sed -i 's|/home/user/project/.claude|'"$HOME"'/.claude|g' ~/.claude/settings.json
-```
+alias cc="claude" ccr="claude --resume" ccd="claude --dangerously-skip-permissions" ccdr="claude --dangerously-skip-permissions --resume"
 
----
-
-## 💻 Shell Aliases (Optional)
-
-Add to `.bashrc` / `.zshrc` / PowerShell profile:
-
-```bash
-alias cc="claude"
-alias ccr="claude --resume"
-alias ccd='claude --dangerously-skip-permissions'
-alias ccdr='claude --dangerously-skip-permissions --resume'
-
-# Tmux grid: tg (4 panes), tg -n 3 (3 panes)
-tg() {
-    local n=4
-    while getopts "n:" opt; do
-        case $opt in n) n=$OPTARG ;; esac
-    done
-    tmux new-session -d -s "grid-$$"
-    for ((i=1; i<n; i++)); do
-        tmux split-window -t "grid-$$"
-        tmux select-layout -t "grid-$$" tiled
-    done
-    tmux attach -t "grid-$$"
-}
-
-# 2 panes side-by-side
-tg2() {
-    tmux new-session -d -s "split-$$"
-    tmux split-window -h -t "split-$$"
-    tmux attach -t "split-$$"
-}
-
-# Add pane to current grid
-ta() {
-    tmux split-window
-    tmux select-layout tiled
-}
-
+# Tmux: tg (4 panes), tg -n 3, tg2 (side-by-side), ta (add pane)
+tg() { local n=4; while getopts "n:" o; do case $o in n) n=$OPTARG;; esac; done; tmux new-session -d -s "g-$$"; for ((i=1;i<n;i++)); do tmux split-window -t "g-$$"; tmux select-layout -t "g-$$" tiled; done; tmux attach -t "g-$$"; }
+tg2() { tmux new-session -d -s "s-$$"; tmux split-window -h -t "s-$$"; tmux attach -t "s-$$"; }
+ta() { tmux split-window; tmux select-layout tiled; }
 alias tg3='tg -n 3'
 ```
 
----
-
-## 💡 Tips
+## Tips
 
 > [!TIP]
 > **Terminal as Editor Tab (VS Code)**: `Cmd/Ctrl+Shift+P` → "Terminal: Create New Terminal in Editor Area" — opens terminal as a tab next to your code, not in the bottom panel.
@@ -148,12 +71,5 @@ alias tg3='tg -n 3'
 > [!TIP]
 > **If something doesn't work — just ask Claude Code to fix it.** Describe the problem and Claude will diagnose and resolve it.
 
----
-
-## 🌐 Agent Browser
-
-Better alternative to Playwright MCP: **[agent-browser](https://github.com/vercel-labs/agent-browser)** | [skill](https://github.com/vercel-labs/agent-browser/tree/main/skills/agent-browser)
-
----
-
-🤙 My tg channel >> [link](https://t.me/agentSShit)
+> [!TIP]
+> **Create SKILLs for repetitive tasks.** Instead of doing any task manually, create a SKILL for it. First version gives junior-mid level results. Then iterate until it matches your quality — 100-1000x time savings.

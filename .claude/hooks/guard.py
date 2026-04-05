@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Claude Code PreToolUse Hook
-Blocks dangerous commands, protects .env files, logs all actions.
+Blocks dangerous commands, protects credentials, logs all actions.
 Cross-platform: supports both Unix and Windows.
 """
 
@@ -179,52 +179,39 @@ def is_dangerous_system_command(command: str) -> bool:
     return False, None
 
 
-def is_env_file_write(tool_name: str, tool_input: dict) -> bool:
+def is_credential_read(tool_name: str, tool_input: dict) -> tuple:
     """
-    Blocks only WRITING to .env files.
-    Reading .env and .env.local is allowed.
+    Blocks reading sensitive credential files.
     """
-    # Allow reading
-    if tool_name == 'Read':
-        return False
+    credential_patterns = [
+        (r'\.ssh[/\\]', "SSH key"),
+        (r'\.aws[/\\](credentials|config)', "AWS credentials"),
+        (r'\.gcloud[/\\]', "GCloud credentials"),
+        (r'\.kube[/\\]config', "Kubernetes config"),
+        (r'credentials\.json', "credentials file"),
+        (r'\.pem$', "PEM certificate"),
+        (r'\.key$', "private key"),
+        (r'\.p12$', "PKCS12 certificate"),
+        (r'\.pfx$', "PFX certificate"),
+        (r'token\.json', "auth token"),
+    ]
 
-    # Block writing/editing .env files
-    if tool_name in ['Edit', 'MultiEdit', 'Write']:
+    if tool_name == 'Read':
         file_path = tool_input.get('file_path', '')
-        if '.env' in file_path:
-            # Allow templates
-            allowed_suffixes = ('.sample', '.example', '.template', '.dist')
-            if any(file_path.endswith(suffix) for suffix in allowed_suffixes):
-                return False
-            return True
+        for pattern, desc in credential_patterns:
+            if re.search(pattern, file_path):
+                return True, f"Reading {desc}: {file_path}"
 
     elif tool_name == 'Bash':
         command = tool_input.get('command', '')
-        # Block writing to .env (Unix patterns)
-        unix_write_patterns = [
-            r'>\s*[^\s]*\.env\b(?!\.(sample|example|template|dist))',
-            r'>>\s*[^\s]*\.env\b(?!\.(sample|example|template|dist))',
-            r'tee\s+[^\|]*\.env\b(?!\.(sample|example|template|dist))',
-            r'cp\s+.*\s+[^\s]*\.env\s*$',
-            r'mv\s+.*\s+[^\s]*\.env\s*$',
-            r'rm\s+[^\|]*\.env\b(?!\.(sample|example|template|dist))',
-        ]
-        # Block writing to .env (Windows patterns)
-        windows_write_patterns = [
-            r'copy\s+.*\s+[^\s]*\.env\s*$',
-            r'move\s+.*\s+[^\s]*\.env\s*$',
-            r'del\s+[^\s]*\.env\b(?!\.(sample|example|template|dist))',
-            r'type\s+.*>\s*[^\s]*\.env\b',
-            r'echo\s+.*>\s*[^\s]*\.env\b',
-            r'set-content\s+.*\.env\b(?!\.(sample|example|template|dist))',
-            r'out-file\s+.*\.env\b(?!\.(sample|example|template|dist))',
-        ]
+        normalized = command.lower()
+        read_cmds = r'\b(cat|head|tail|less|more|bat|type|get-content)\b'
+        if re.search(read_cmds, normalized):
+            for pattern, desc in credential_patterns:
+                if re.search(pattern, normalized):
+                    return True, f"Reading {desc} via shell"
 
-        for pattern in unix_write_patterns + windows_write_patterns:
-            if re.search(pattern, command):
-                return True
-
-    return False
+    return False, None
 
 
 def is_docker_safe(command: str) -> bool:
@@ -292,12 +279,11 @@ def main():
         log_dir = Path.home() / '.claude' / 'logs'
         log_dir.mkdir(parents=True, exist_ok=True)
 
-        # === Check writing to .env files ===
-        if is_env_file_write(tool_name, tool_input):
-            reason = "Writing to .env files is blocked"
-            log_action(log_dir, input_data, blocked=True, reason=reason)
-            print(f"BLOCKED: {reason}", file=sys.stderr)
-            print("Use .env.sample or .env.example for templates", file=sys.stderr)
+        # === Check credential file reads ===
+        is_cred, cred_reason = is_credential_read(tool_name, tool_input)
+        if is_cred:
+            log_action(log_dir, input_data, blocked=True, reason=cred_reason)
+            print(f"BLOCKED: {cred_reason}", file=sys.stderr)
             sys.exit(2)
 
         # === Check Bash commands ===

@@ -19,42 +19,35 @@ import sys
 from pathlib import Path
 
 CACHE_DIR = Path(__file__).parent / "cache"
+IS_WINDOWS = platform.system() == "Windows"
 
 # Messages — correspond to cache files in .claude/hooks/cache/
 MESSAGES = {
-    "ru": {
-        "ready": "Задача выполнена. Жду ваших указаний.",
-        "permission": "Требуется ваше внимание.",
-        "idle": "Ожидаю ваших указаний.",
-    },
-    "en": {
-        "ready": "The AI Agent has finished its work. Awaiting your instructions.",
-        "permission": "Your attention is required.",
-        "idle": "Awaiting your instructions.",
-    },
+    "ready": "The AI Agent has finished its work. Awaiting your instructions.",
+    "permission": "Your attention is required.",
+    "idle": "Awaiting your instructions.",
 }
 
-# Random completion phrases (en only) — must match cached MP3 filenames
-COMPLETION_PHRASES_EN = [
+# Random completion phrases — must match cached MP3 filenames
+COMPLETION_PHRASES = [
     "Work complete! Awaiting your instructions.",
     "All done! Awaiting your instructions.",
     "Task finished! Awaiting your instructions.",
     "Job complete! The AI Agent has finished its work.",
     "The AI Agent has finished its work. Ready for next task!",
+    "All clear! Standing by.",
+    "Mission accomplished! What's next?",
+    "That's a wrap! Ready for more.",
+    "All systems go! What's the next move?",
+    "Another one down! Standing by.",
+    "Wrapped up! Your move.",
 ]
 
 # Desktop notification titles
 NOTIFICATION_TITLES = {
-    "ru": {
-        "ready": "Claude Code — Готово",
-        "permission": "Claude Code — Внимание",
-        "idle": "Claude Code",
-    },
-    "en": {
-        "ready": "Claude Code — Complete",
-        "permission": "Claude Code — Attention",
-        "idle": "Claude Code",
-    },
+    "ready": "Claude Code — Complete",
+    "permission": "Claude Code — Attention",
+    "idle": "Claude Code",
 }
 
 
@@ -64,9 +57,6 @@ NOTIFICATION_TITLES = {
 
 
 def send_desktop_notification(title: str, message: str) -> bool:
-    if os.getenv("DESKTOP_NOTIFICATIONS", "true").lower() not in ("true", "1", "yes"):
-        return False
-
     system = platform.system()
     try:
         if system == "Linux":
@@ -105,18 +95,31 @@ def _notify_linux(title: str, message: str) -> bool:
 def _notify_macos(title: str, message: str) -> bool:
     if shutil.which("terminal-notifier"):
         try:
+            # Detect current terminal app for click-to-focus
             result = subprocess.run(
                 ["osascript", "-e", 'tell application "System Events" to get name of first process whose frontmost is true'],
                 capture_output=True, text=True, timeout=2,
             )
             front_app = result.stdout.strip() if result.returncode == 0 else "Terminal"
+
+            # Map common terminal names to bundle IDs
+            bundle_ids = {
+                "Terminal": "com.apple.Terminal",
+                "iTerm2": "com.googlecode.iterm2",
+                "Alacritty": "io.alacritty",
+                "kitty": "net.kovidgoyal.kitty",
+                "WezTerm": "com.github.wez.wezterm",
+                "Hyper": "co.zeit.hyper",
+            }
+            activate_id = bundle_ids.get(front_app, f"com.apple.{front_app.lower().replace(' ', '')}")
+
             subprocess.run(
                 [
                     "terminal-notifier",
                     "-title", title,
                     "-message", message,
                     "-group", "claude-code",
-                    "-activate", f"com.apple.{front_app.lower().replace(' ', '')}",
+                    "-activate", activate_id,
                 ],
                 check=True, capture_output=True, timeout=5,
             )
@@ -195,6 +198,20 @@ def play_cached(text: str) -> bool:
     if not cache_path.exists():
         return False
 
+    # Windows: use winmm MCI (no external deps, supports MP3)
+    if IS_WINDOWS:
+        try:
+            import ctypes
+            winmm = ctypes.windll.winmm
+            path_str = str(cache_path).replace("\\", "\\\\")
+            buf = ctypes.create_unicode_buffer(256)
+            winmm.mciSendStringW(f'open "{path_str}" type mpegvideo alias claude_snd', buf, 256, None)
+            winmm.mciSendStringW('play claude_snd wait', buf, 256, None)
+            winmm.mciSendStringW('close claude_snd', buf, 256, None)
+            return True
+        except Exception:
+            pass  # Fall through to ffplay/mpv
+
     players = [
         ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet"],
         ["mpv", "--no-video", "--really-quiet"],
@@ -214,9 +231,8 @@ def play_cached(text: str) -> bool:
 # =============================================================================
 
 
-def announce(message: str, notification_type: str, lang: str) -> None:
-    titles = NOTIFICATION_TITLES.get(lang, NOTIFICATION_TITLES["en"])
-    title = titles.get(notification_type, titles["ready"])
+def announce(message: str, notification_type: str) -> None:
+    title = NOTIFICATION_TITLES.get(notification_type, NOTIFICATION_TITLES["ready"])
     send_desktop_notification(title, message)
     play_cached(message)
 
@@ -230,26 +246,18 @@ def main():
     except json.JSONDecodeError:
         input_data = {}
 
-    lang = os.getenv("TTS_LANGUAGE", "en").lower()
-    if lang not in MESSAGES:
-        lang = "en"
-    msgs = MESSAGES[lang]
-
     if permission:
         notif_type = input_data.get("notification_type", "")
         if notif_type == "idle_prompt":
-            announce(msgs["idle"], "idle", lang)
+            announce(MESSAGES["idle"], "idle")
         else:
-            announce(msgs["permission"], "permission", lang)
+            announce(MESSAGES["permission"], "permission")
         sys.exit(0)
 
     if notify:
         if input_data.get("hook_event_name") == "Stop":
-            if lang == "en":
-                message = random.choice(COMPLETION_PHRASES_EN)
-            else:
-                message = msgs["ready"]
-            announce(message, "ready", lang)
+            message = random.choice(COMPLETION_PHRASES)
+            announce(message, "ready")
 
     sys.exit(0)
 

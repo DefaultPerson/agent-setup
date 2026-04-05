@@ -1,6 +1,14 @@
 ---
+allowed-tools: Bash(git *), Bash(gh *)
 description: Push current branch and create a pull request.
 ---
+
+## Context
+
+- Status: !`git status`
+- Branch: !`git branch --show-current`
+- Remote: !`git remote -v`
+- Unpushed commits: !`git log @{u}..HEAD --oneline 2>/dev/null || echo "No upstream set"`
 
 ## Git Rules
 

@@ -4,6 +4,37 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## 2026-04-05
+
+### Added
+
+- **guard.py** — credential read protection: blocks reading `.ssh/*`, `.aws/credentials`, `*.pem`, `*.key`, `credentials.json`, `token.json`
+- **notification.py** — Windows audio via `winmm.mciSendString` (MP3 without ffplay/mpv)
+- **notification.py** — macOS click-to-focus: notification click activates terminal (iTerm2, Alacritty, kitty, WezTerm, Hyper)
+- **notification.py** — 6 new completion phrases (Laura voice, ElevenLabs v3)
+- **ultrathink.md** — Reasoning, Execution, Output sections with parallel agents instruction
+- **commit.md, push-and-pr.md, publish.md, release.md** — inline `!` backtick context (pre-loads git status/branch/diff) + `allowed-tools` restriction
+- **settings.example.json** — `attribution` config (empty = no Co-Authored-By)
+- **README.md** — Recommended Plugins section, SKILL tip, LLM Quick Start prompt
+
+### Changed
+
+- **research.md** — `Task` tool → `Agent` tool with `run_in_background: true`
+- **CLAUDE.md** — `Task agent (Explore)` → `Agent (subagent_type: Explore)` in tooling section
+- **settings.example.json** — paths use `$HOME` instead of hardcoded placeholders (no `sed` needed)
+- **settings.local.json.windows** — paths use `%USERPROFILE%` instead of relative
+- **notification.py** — simplified: removed Russian messages, language selection, `DESKTOP_NOTIFICATIONS` env var
+- **statusline.py** — uses new API fields (`context_window.used_percentage`, `rate_limits`, `session_name`) instead of transcript parsing
+- **README.md** — restructured: removed ToC, Shell Aliases, Global Installation dupe, tg channel link; simplified Manual Setup
+
+### Removed
+
+- **guard.py** — `.env` write protection (was blocking legitimate workflows)
+- **notification.py** — Russian messages, `TTS_LANGUAGE` env var, `DESKTOP_NOTIFICATIONS` env var
+- **settings.example.json** — `CONTEXT7_API_KEY`, `TTS_LANGUAGE`, `DESKTOP_NOTIFICATIONS` env vars
+- **.mcp.json.sample**, **.mcp.json.windows** — replaced by context7 plugin installation
+- **CLAUDE.md** — removed `NEVER ADD Co-Authored-By` rules (replaced by `attribution` setting)
+
 ## 2026-03-11
 
 ### Fixed

@@ -1,6 +1,13 @@
 ---
+allowed-tools: Bash(git *), Bash(gh *), Bash(mkdir *)
 description: Publish repository to GitHub with full setup.
 ---
+
+## Context
+
+- Remote: !`git remote -v 2>/dev/null || echo "No remote"`
+- Branch: !`git branch --show-current 2>/dev/null || echo "Not a git repo"`
+- GitHub repo: !`gh repo view --json nameWithOwner,visibility,description --jq '"\(.nameWithOwner) (\(.visibility)) — \(.description)"' 2>/dev/null || echo "Not on GitHub yet"`
 
 Interactive repo publication workflow. Uses `gh` CLI for everything.
 

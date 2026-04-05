@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Claude Code status line: dir >> branch >> model >> context%"""
+"""Claude Code status line: dir >> branch >> model >> context% >> rate limits"""
 import json
 import os
 import subprocess
@@ -16,40 +16,6 @@ def get_branch(project_dir: str) -> str:
         return result.stdout.strip() if result.returncode == 0 else ""
     except:
         return ""
-
-
-def get_context_info(transcript_path: str, context_limit: int) -> dict:
-    """Parse transcript to get context usage info."""
-    try:
-        if not transcript_path or not Path(transcript_path).exists():
-            return {}
-
-        limit = context_limit or 200_000
-
-        # Get LAST input tokens (each API call includes full message history)
-        last_input = 0
-        with open(transcript_path) as f:
-            for line in f:
-                try:
-                    entry = json.loads(line)
-                    usage = entry.get("message", {}).get("usage", {})
-                    if usage:
-                        inp = (usage.get("input_tokens", 0) +
-                               usage.get("cache_read_input_tokens", 0) +
-                               usage.get("cache_creation_input_tokens", 0))
-                        if inp > 0:
-                            last_input = inp
-                except:
-                    continue
-
-        if last_input == 0:
-            return {}
-
-        pct = (last_input / limit) * 100
-        tokens_left = limit - last_input
-        return {"pct": pct, "tokens_left": tokens_left}
-    except:
-        return {}
 
 
 def format_bar(pct: float, width: int = 20) -> str:
@@ -88,37 +54,59 @@ def main():
 
     project_dir = data.get("workspace", {}).get("project_dir", "")
     model = data.get("model", {}).get("display_name", "?")
-    transcript_path = data.get("transcript_path", "")
-    context_limit = data.get("context_window", {}).get("context_window_size", 200_000)
-    session_id = data.get("session_id", "")
+    session_name = data.get("session_name", "")
     branch = get_branch(project_dir)
 
-    # Context info
-    ctx = get_context_info(transcript_path, context_limit)
+    # Context info — prefer new API fields, fallback to context_window
+    ctx_window = data.get("context_window", {})
+    pct = ctx_window.get("used_percentage")
+    remaining_pct = ctx_window.get("remaining_percentage")
+
+    # Rate limits (Claude.ai Pro/Max only)
+    rate_limits = data.get("rate_limits", {})
+    five_hour = rate_limits.get("five_hour", {})
+    seven_day = rate_limits.get("seven_day", {})
 
     # Project folder name
     folder = Path(project_dir).name if project_dir else ""
 
     # ANSI colors
-    G = "\033[32m"  # green
     D = "\033[2m"   # dim
     R = "\033[0m"   # reset
     SEP = f" {D}>>{R} "
-
     CL = "\033[38;2;217;119;87m"  # claude orange
 
     parts = []
-    if folder:
+
+    if session_name:
+        parts.append(f"\033[36m{session_name}{R}")
+    elif folder:
         parts.append(f"{D}{folder}{R}")
+
     if branch:
         parts.append(f"\033[35m{branch}{R}")
 
     parts.append(f"{CL}{model}{R}")
 
-    if ctx:
-        bar, color = format_bar(ctx["pct"])
-        left_k = ctx["tokens_left"] / 1000
-        parts.append(f"{bar} {color}~{left_k:.0f}k left{R}")
+    # Context bar
+    if pct is not None:
+        bar, color = format_bar(pct)
+        if remaining_pct is not None:
+            remaining_k = int(remaining_pct * ctx_window.get("context_window_size", 200_000) / 100 / 1000)
+            parts.append(f"{bar} {color}~{remaining_k}k left{R}")
+        else:
+            parts.append(f"{bar} {color}{pct:.0f}%{R}")
+
+    # Rate limits (compact)
+    if five_hour.get("used_percentage") is not None:
+        rl_pct = five_hour["used_percentage"]
+        if rl_pct < 50:
+            rl_color = "\033[32m"
+        elif rl_pct < 80:
+            rl_color = "\033[33m"
+        else:
+            rl_color = "\033[31m"
+        parts.append(f"{rl_color}5h:{rl_pct:.0f}%{R}")
 
     print(SEP.join(parts))
 
