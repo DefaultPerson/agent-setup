@@ -33,22 +33,20 @@ Prerequisites: Node.js 18+, uv (python package manager), ffmpeg or mpv (audio fo
 
 ## Recommended Plugins
 
+LSP and context7 are available in the default marketplace — install via `/plugin` → search.
+
 ```bash
-# Documentation lookup
-claude /install-plugin context7@claude-plugins-official
-
-# LSP for code analysis (requires language servers installed)
-claude /install-plugin typescript-lsp@claude-plugins-official
-claude /install-plugin pyright-lsp@claude-plugins-official
-claude /install-plugin gopls-lsp@claude-plugins-official
-
 # Context optimization — keeps raw tool output out of context window
 # https://github.com/mksglu/context-mode
-claude /install-plugin context-mode
+/plugin marketplace add mksglu/context-mode
+/plugin install context-mode@context-mode
 
 # Browser automation for AI agents
 # https://github.com/vercel-labs/agent-browser
-claude /install-skill agent-browser@vercel-labs/agent-browser
+/plugin marketplace add vercel-labs/agent-browser
+/plugin install agent-browser@agent-browser
+
+/reload-plugins
 ```
 
 ## Shell Aliases
