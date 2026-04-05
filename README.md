@@ -23,10 +23,12 @@ Prerequisites: Node.js 18+, uv (python package manager), ffmpeg or mpv (audio fo
 3. cp -r .claude/commands ~/.claude/commands
 4. cp .claude/settings.example.json ~/.claude/settings.json
    # Windows: cp .claude/settings.local.json.windows "$env:USERPROFILE/.claude/settings.json"
-5. Install recommended plugins from the README
-6. Add shell aliases from the README to user's shell profile
-7. Ask me for any preferences
-8. Verify everything works
+5. cp CLAUDE.md ~/.claude/CLAUDE.md (optional — author's coding style and rules)
+6. Install recommended plugins from the README
+7. Add shell aliases from the README to user's shell profile
+8. Ask me for any preferences
+9. Verify everything works
+10. cd .. && rm -rf claude-code-setup (repo no longer needed after setup)
 ```
 
 ## Recommended Plugins
