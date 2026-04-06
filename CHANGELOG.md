@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## 2026-04-06
+
+### Changed
+
+- **Repo renamed** — `claude-code-setup` → `agent-setup` (platform-neutral naming)
+- **README.md** — restructured into separate Claude Code and Codex CLI sections (Setup, Plugins, Aliases each)
+- **README.md** — Codex plugins: replaced incorrect `codex plugin install` with links to plugins
+- **README.md** — Codex aliases: fixed `--full-auto` (was `--approval-policy full-auto`), `codex resume --last` (was `codex exec resume --last`)
+- **README.md** — removed tmux aliases (tg/tg2/tg3/ta)
+- **README.md** — Tips section moved to end
+
 ## 2026-04-05
 
 ### Added

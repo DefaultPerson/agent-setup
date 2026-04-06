@@ -1,6 +1,6 @@
-# Claude Code Setup
+# agent-setup
 
-Universal setup for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) — security hooks, notifications, status line, and productivity commands.
+Universal setup for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and [OpenAI Codex CLI](https://developers.openai.com/codex/cli) — security hooks, notifications, status line, and productivity commands.
 
 ## Features
 
@@ -11,27 +11,31 @@ Universal setup for [Claude Code](https://docs.anthropic.com/en/docs/claude-code
 - **Slash Commands** — `/research`, `/ultrathink`, `/commit`, `/push-and-pr`, `/prime`, `/publish`, `/release`
 - **Cross-platform** — Linux, macOS, Windows
 
-## Setup
+---
+
+## Claude Code
+
+### Setup
 
 Paste into Claude Code — or follow the steps manually:
 
 ```
 Prerequisites: Node.js 18+, uv (python package manager), ffmpeg or mpv (audio for TTS).
 
-1. git clone https://github.com/DefaultPerson/claude-code-setup.git && cd claude-code-setup
+1. git clone https://github.com/DefaultPerson/agent-setup.git && cd agent-setup
 2. cp -r .claude/hooks ~/.claude/hooks
 3. cp -r .claude/commands ~/.claude/commands
 4. cp .claude/settings.example.json ~/.claude/settings.json
    # Windows: cp .claude/settings.local.json.windows "$env:USERPROFILE/.claude/settings.json"
 5. cp CLAUDE.md ~/.claude/CLAUDE.md (optional — author's coding style and rules)
-6. Install recommended plugins from the README
-7. Add shell aliases from the README to user's shell profile
+6. Install recommended plugins (see below)
+7. Add shell aliases (see below)
 8. Ask me for any preferences
 9. Verify everything works
-10. Delete claude-code-setup (repo no longer needed after setup)
+10. Delete agent-setup (repo no longer needed after setup)
 ```
 
-## Recommended Plugins
+### Recommended Plugins
 
 LSP, context7, frontend-design are available in the default marketplace — install via `/plugin` → search.
 
@@ -49,19 +53,58 @@ LSP, context7, frontend-design are available in the default marketplace — inst
 /reload-plugins
 ```
 
-## Shell Aliases
+### Shell Aliases
 
 Add to `.bashrc` / `.zshrc`:
 
 ```bash
 alias cc="claude" ccr="claude --resume" ccd="claude --dangerously-skip-permissions" ccdr="claude --dangerously-skip-permissions --resume"
-
-# Tmux: tg (4 panes), tg -n 3, tg2 (side-by-side), ta (add pane)
-tg() { local n=4; while getopts "n:" o; do case $o in n) n=$OPTARG;; esac; done; tmux new-session -d -s "g-$$"; for ((i=1;i<n;i++)); do tmux split-window -t "g-$$"; tmux select-layout -t "g-$$" tiled; done; tmux attach -t "g-$$"; }
-tg2() { tmux new-session -d -s "s-$$"; tmux split-window -h -t "s-$$"; tmux attach -t "s-$$"; }
-ta() { tmux split-window; tmux select-layout tiled; }
-alias tg3='tg -n 3'
 ```
+
+---
+
+## Codex CLI
+
+### Setup
+
+```
+Prerequisites: Node.js 18+, uv (python package manager), ffmpeg or mpv (audio for TTS).
+
+1. git clone https://github.com/DefaultPerson/agent-setup.git && cd agent-setup
+2. cp -r .codex/hooks ~/.codex/hooks
+3. cp .codex/hooks.json ~/.codex/hooks.json
+4. cp .codex/config.toml.sample ~/.codex/config.toml
+5. cp AGENTS.md ~/.codex/AGENTS.md (optional — author's coding style and rules)
+6. Edit ~/.codex/config.toml — set API keys, model preferences
+7. Add MCP servers (see below)
+8. Add shell aliases (see below)
+9. Verify everything works
+10. Delete agent-setup (repo no longer needed after setup)
+```
+
+**Key differences from Claude Code:**
+- Config: `config.toml` (TOML) instead of `settings.json`
+- Instructions: `AGENTS.md` instead of `CLAUDE.md`
+- Status line: built-in `/statusline` picker — no custom script needed
+- Plugins: installed via interactive UI, not CLI command
+- MCP: configured in `config.toml` `[mcp_servers]` section or via `codex mcp add`
+
+### Recommended Plugins
+
+- [context-mode](https://github.com/mksglu/context-mode) — context window optimization
+- [agent-browser](https://github.com/vercel-labs/agent-browser) — browser automation for AI agents
+- [context7](https://github.com/upstash/context7) — library documentation lookup
+- [frontend-design](https://github.com/anthropics/claude-plugins-official/tree/main/plugins/frontend-design) — production-grade frontend generation
+
+### Shell Aliases
+
+Add to `.bashrc` / `.zshrc`:
+
+```bash
+alias cx="codex" cxr="codex resume --last" cxd="codex --full-auto"
+```
+
+---
 
 ## Tips
 
@@ -69,7 +112,11 @@ alias tg3='tg -n 3'
 > **Terminal as Editor Tab (VS Code)**: `Cmd/Ctrl+Shift+P` → "Terminal: Create New Terminal in Editor Area" — opens terminal as a tab next to your code, not in the bottom panel.
 
 > [!TIP]
-> **If something doesn't work — just ask Claude Code to fix it.** Describe the problem and Claude will diagnose and resolve it.
+> **If something doesn't work — just ask Claude Code/Codex to fix it.** Describe the problem and it will diagnose and resolve it.
 
 > [!TIP]
 > **Create SKILLs for repetitive tasks.** Instead of doing any task manually, create a SKILL for it. First version gives junior-mid level results. Then iterate until it matches your quality — 100-1000x time savings.
+
+## License
+
+MIT
