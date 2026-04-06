@@ -1,4 +1,5 @@
 ---
+allowed-tools: Bash(git *), Bash(find *), Bash(head *), Read, Glob, Grep
 description: Load project context and output a structured summary.
 ---
 
