@@ -2,14 +2,7 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash|shell",
-        "hooks": [{
-          "type": "command",
-          "command": "python3 ~/.codex/hooks/guard.py"
-        }]
-      },
-      {
-        "matcher": "Edit|Write|MultiEdit|file_edit|file_write",
+        "matcher": "Bash",
         "hooks": [{
           "type": "command",
           "command": "python3 ~/.codex/hooks/guard.py"
@@ -18,19 +11,9 @@
     ],
     "Stop": [
       {
-        "matcher": "",
         "hooks": [{
           "type": "command",
           "command": "python3 ~/.codex/hooks/notification.py --notify"
-        }]
-      }
-    ],
-    "Notification": [
-      {
-        "matcher": "",
-        "hooks": [{
-          "type": "command",
-          "command": "python3 ~/.codex/hooks/notification.py --permission"
         }]
       }
     ]

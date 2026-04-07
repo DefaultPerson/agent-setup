@@ -21,10 +21,6 @@ status_line = ["current-dir", "git-branch", "model-with-reasoning", "context-rem
 [shell_environment_policy]
 inherit = "core"
 
-[shell_environment_policy.set]
-TTS_LANGUAGE = "en"
-DESKTOP_NOTIFICATIONS = "true"
-
 # MCP Servers
 [mcp_servers.context7]
 url = "https://mcp.context7.com/mcp"

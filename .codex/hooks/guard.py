@@ -111,7 +111,7 @@ def is_dangerous_delete_command(command: str) -> bool:
     return False
 
 
-def is_dangerous_system_command(command: str) -> bool:
+def is_dangerous_system_command(command: str) -> tuple[bool, str | None]:
     """
     Detection of dangerous system commands.
     Cross-platform: Unix and Windows/PowerShell.
