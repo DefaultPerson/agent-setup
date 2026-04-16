@@ -106,16 +106,12 @@ VII. AI-Driven Development
 - Code search (exact) → Grep
 - Code search (broad) → Agent (subagent_type: Explore)
 - Documentation → Context7 or WebSearch+WebFetch
-- Browser testing/automation → agent-browser skill
 - Deep analysis → Native extended thinking (/ultrathink)
 
 ## Built-in Tools (preferred)
 - **WebSearch** — web search with current data
 - **WebFetch** — fetch and parse web pages
 - **Extended thinking** — native in Opus 4.5/Sonnet 4 (no MCP needed)
-
-## Skills
-- `agent-browser` — CLI-based browser automation for web testing and data extraction
 
 ## Orchestration
 - Coordination: decomposition; dependencies: docs → implementation → tests; unified response.
