@@ -256,7 +256,7 @@ def log_action(log_dir: Path, input_data: dict, blocked: bool = False, reason: s
                 log_data = json.load(f)
         else:
             log_data = []
-    except (json.JSONDecodeError, ValueError):
+    except (json.JSONDecodeError, ValueError, OSError):
         log_data = []
 
     log_data.append(log_entry)
@@ -268,11 +268,15 @@ def log_action(log_dir: Path, input_data: dict, blocked: bool = False, reason: s
     try:
         with open(log_path, 'w') as f:
             json.dump(log_data, f, indent=2, ensure_ascii=False)
-    except OSError:
+    except (OSError, TypeError, ValueError):
         return
 
 
+SECURITY_CRITICAL_TOOLS = {'Bash', 'Read'}
+
+
 def main():
+    tool_name = ''
     try:
         input_data = json.load(sys.stdin)
 
@@ -326,11 +330,18 @@ def main():
         log_action(log_dir, input_data, blocked=False)
         sys.exit(0)
 
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
+        print(f"guard.py: invalid stdin JSON: {e}", file=sys.stderr)
         sys.exit(2)
-    except Exception:
-        # On hook error - block (fail-close)
-        sys.exit(2)
+    except Exception as e:
+        # Surface the error so it's not swallowed silently
+        import traceback
+        print(f"guard.py error on tool={tool_name!r}: {type(e).__name__}: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        # Fail-close only for security-critical tools; fail-open otherwise
+        if tool_name in SECURITY_CRITICAL_TOOLS:
+            sys.exit(2)
+        sys.exit(0)
 
 
 if __name__ == '__main__':

@@ -56,6 +56,17 @@ Add to `.bashrc` / `.zshrc`:
 alias cc="claude" ccr="claude --resume" ccd="claude --dangerously-skip-permissions" ccdr="claude --dangerously-skip-permissions --resume"
 ```
 
+### TTS Volume
+
+TTS notification volume is controlled independently of system volume via the `VOLUME` constant at **line 25** of `.claude/hooks/notification.py`:
+
+```python
+# Volume level: 0 (silent) to 1000 (max). Default 500 = 50%.
+VOLUME = 400
+```
+
+Range: `0` (silent) to `1000` (max). Default `400` (~40%). Applies to both Windows MCI playback and `ffplay`/`mpv` fallbacks.
+
 ---
 
 ## Codex CLI

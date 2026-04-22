@@ -21,6 +21,9 @@ from pathlib import Path
 CACHE_DIR = Path(__file__).parent / "cache"
 IS_WINDOWS = platform.system() == "Windows"
 
+# Volume level: 0 (silent) to 1000 (max). Default 500 = 50%.
+VOLUME = 400
+
 # Messages — correspond to cache files in .claude/hooks/cache/
 MESSAGES = {
     "ready": "The AI Agent has finished its work. Awaiting your instructions.",
@@ -36,9 +39,9 @@ COMPLETION_PHRASES = [
     "Job complete! The AI Agent has finished its work.",
     "The AI Agent has finished its work. Ready for next task!",
     "All clear! Standing by.",
-    "Mission accomplished! What's next?",
+    "Mission accomplished! What's next.",
     "That's a wrap! Ready for more.",
-    "All systems go! What's the next move?",
+    "All systems go! What's the next move.",
     "Another one down! Standing by.",
     "Wrapped up! Your move.",
 ]
@@ -203,18 +206,23 @@ def play_cached(text: str) -> bool:
         try:
             import ctypes
             winmm = ctypes.windll.winmm
-            path_str = str(cache_path).replace("\\", "\\\\")
             buf = ctypes.create_unicode_buffer(256)
-            winmm.mciSendStringW(f'open "{path_str}" type mpegvideo alias claude_snd', buf, 256, None)
-            winmm.mciSendStringW('play claude_snd wait', buf, 256, None)
-            winmm.mciSendStringW('close claude_snd', buf, 256, None)
-            return True
+            rc = winmm.mciSendStringW(
+                f'open "{cache_path}" type mpegvideo alias claude_snd', buf, 256, None
+            )
+            if rc == 0:
+                winmm.mciSendStringW(f'setaudio claude_snd volume to {VOLUME}', buf, 256, None)
+                winmm.mciSendStringW('play claude_snd wait', buf, 256, None)
+                winmm.mciSendStringW('close claude_snd', buf, 256, None)
+                return True
+            # MCI refused the file — fall through to ffplay/mpv
         except Exception:
-            pass  # Fall through to ffplay/mpv
+            pass
 
+    vol_pct = max(0, min(VOLUME, 1000)) / 10  # 0-100 for mpv/ffplay
     players = [
-        ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet"],
-        ["mpv", "--no-video", "--really-quiet"],
+        ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", "-volume", str(int(vol_pct))],
+        ["mpv", "--no-video", "--really-quiet", f"--volume={int(vol_pct)}"],
     ]
     for cmd in players:
         if shutil.which(cmd[0]):
