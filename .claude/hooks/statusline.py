@@ -5,7 +5,16 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
+
+# Force UTF-8 stdout so the accent rail (▌), arrow separator (›) and ⚠ marker
+# don't crash print() on consoles whose default encoding isn't UTF-8
+# (e.g. Windows cp1251); errors='replace' as a last-resort safety net.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 
 # Traffic-light colors — Claude-branded (warm earth)
 GREEN = "\033[38;2;110;176;90m"    # leaf  #6eb05a
@@ -62,7 +71,7 @@ def main():
 
     # Debug: dump input to file (set DEBUG_STATUSLINE=1)
     if os.getenv("DEBUG_STATUSLINE"):
-        debug_path = Path("/tmp/claude-statusline-debug.json")
+        debug_path = Path(tempfile.gettempdir()) / "claude-statusline-debug.json"
         debug_path.write_text(json.dumps(data, indent=2, default=str))
 
     project_dir = data.get("workspace", {}).get("project_dir", "")
