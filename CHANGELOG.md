@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **CLAUDE.md** — `## Models` guidance: when running as Fable 5, default Workflow/subagent `model` to Opus — Fable agents are often redundant; keep Fable for the driving loop and delegate real work to Opus.
 - **guard.py** — `test_guard.py` regression corpus (82 cases) built from real false positives harvested from session transcripts; run with `uv run --no-project .claude/hooks/test_guard.py`.
 - **guard.py** — `ask` verdict tier via PreToolUse `permissionDecision` JSON: risky-but-legitimate commands (`git reset --hard`, `git push -f`, `git clean -f`, `curl | sh`, `rm -rf` of a top-level `$HOME` dir, `docker system prune -a`) now prompt for approval instead of hard-blocking (mapped to deny under Codex where no prompt exists).
 - **guard.py** — `Read` tool protection wired in `settings.example.json` (private keys denied; `.ssh/config`, `known_hosts`, `*.pub` allowed) and `ask` on Edit/Write into `~/.ssh/`, deployed hook/settings files, `/etc/`.

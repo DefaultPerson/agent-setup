@@ -115,6 +115,9 @@ VII. AI-Driven Development
 - Coordination: decomposition; dependencies: docs → implementation → tests; unified response.
 - Resilience: backoff, graceful degradation; alternative sources.
 
+## Models
+- **Fable 5:** in Workflows/subagents, default agents to Opus (`model: 'opus'`) — Fable agents are often redundant. Keep Fable for the driving loop, delegate real work to Opus.
+
 ## Web Search Tips
 - Queries by signatures/errors/versions (`Class.method E123 v3.3 site:docs.vendor.com`).
 - Priority: docs/RFC/release notes → issues/SO.
