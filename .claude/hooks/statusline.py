@@ -99,6 +99,7 @@ def main():
     BRANCH = "\033[38;2;212;162;127m"  # kraft tan
     CL = "\033[38;2;217;119;87m"       # claude coral (model)
     EFFORT = "\033[38;2;156;142;126m"  # warm taupe
+    MONEY = "\033[38;2;201;169;79m"    # muted gold — session $ (API-equivalent)
 
     # Line 1: dir > branch
     line1 = []
@@ -138,6 +139,13 @@ def main():
     if pct is not None:
         bar, color = format_bar(pct)
         line2.append(f"{bar} {color}{pct:.0f}%{R}")
+
+    # Session cost — Claude Code's API-equivalent estimate (cost.total_cost_usd:
+    # tokens incl. cache × model list price). Phantom money on a subscription;
+    # shown only when populated & non-zero so it no-ops if absent.
+    cost_usd = data.get("cost", {}).get("total_cost_usd")
+    if cost_usd:
+        line2.append(f"{MONEY}${cost_usd:.2f}{R}")
 
     # Accent marker (coral) on each line + adaptive: one line if it fits $COLUMNS, else two
     MARK = f"{CL}▌{R} "
