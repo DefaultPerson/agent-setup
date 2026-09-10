@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Claude Code status line: dir >> branch >> model >> context% >> rate limits"""
+"""Claude Code status line: dir >> branch >> model >> effort >> rate limits >> context >> cost"""
 import json
 import os
 import re
@@ -135,10 +135,11 @@ def main():
         rl_text = f"{rl5:.0f}%/{rl7:.0f}%" if rl7 is not None else f"{rl5:.0f}%"
         line2.append(f"{rl_color}{rl_text}{R}")
 
-    # Context bar — bar + used percentage, whole number (e.g. [####---] 57%)
+    # Context bar — bar + tokens in context, in k (e.g. [####---] 133k)
     if pct is not None:
         bar, color = format_bar(pct)
-        line2.append(f"{bar} {color}{pct:.0f}%{R}")
+        tokens = ctx_window.get("total_input_tokens") or 0
+        line2.append(f"{bar} {color}{tokens / 1000:.0f}k{R}")
 
     # Session cost — Claude Code's API-equivalent estimate (cost.total_cost_usd:
     # tokens incl. cache × model list price). Phantom money on a subscription;
