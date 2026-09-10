@@ -6,13 +6,12 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **.claude/skills/repo-context** — compact repository snapshot collected with `!` injections before the model runs; replaces `/prime`.
 - **statusline.py** — time left until each rate-limit window resets, dim, after the percentages: `1%/76% (4h/48h)`; minutes under an hour (`40m`). Reads `rate_limits.*.resets_at`.
-- **settings.example.json / settings.local.json.windows** — `statusLine.refreshInterval: 60`, so the reset countdown keeps ticking while the session is idle (otherwise the status line re-runs only on events).
+- **settings.example.json** — `statusLine.refreshInterval: 60`, so the reset countdown keeps ticking while the session is idle (otherwise the status line re-runs only on events).
 - **statusline.py** — session cost segment (`$N.NN`, muted gold, tail of line 2) from Claude Code's `cost.total_cost_usd` (API-equivalent estimate: token usage incl. cache × model list price). Guarded by `if cost_usd:` — hidden when absent/zero, so it no-ops on subscriptions that don't surface it.
 - **CLAUDE.md** — `## Models` guidance: when running as Fable 5, default Workflow/subagent `model` to Opus — Fable agents are often redundant; keep Fable for the driving loop and delegate real work to Opus.
-- **guard.py** — `test_guard.py` regression corpus (82 cases) built from real false positives harvested from session transcripts; run with `uv run --no-project .claude/hooks/test_guard.py`.
-- **guard.py** — `ask` verdict tier via PreToolUse `permissionDecision` JSON: risky-but-legitimate commands (`git reset --hard`, `git push -f`, `git clean -f`, `curl | sh`, `rm -rf` of a top-level `$HOME` dir, `docker system prune -a`) now prompt for approval instead of hard-blocking (mapped to deny under Codex where no prompt exists).
-- **guard.py** — `Read` tool protection wired in `settings.example.json` (private keys denied; `.ssh/config`, `known_hosts`, `*.pub` allowed) and `ask` on Edit/Write into `~/.ssh/`, deployed hook/settings files, `/etc/`.
+- **guard.py** — `Read` tool protection wired in `settings.example.json` (private keys denied; `.ssh/config`, `known_hosts`, `*.pub` allowed).
 - **statusline.py** — `effort` segment (e.g. `high`/`xhigh`); reads `effort.level` from status line JSON (Claude Code ≥ v2.1.119). Relevant since Opus 4.8 defaults to `high` and exposes `/effort xhigh`.
 - **config.toml.sample** — documented Codex `tui.status_line` built-in items and `/hooks` trust workflow.
 - **config.toml.sample** — enabled Codex theme-aware status line colors and added PR/branch/context progress items.
@@ -24,22 +23,30 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- **skills** — `commit`, `push-and-pr`, `publish` (Claude Code + Codex) and `research` (Codex) rewritten from step-by-step procedures into intent + constraints: the PR base is the repository's default branch instead of an assumed `main`, files are staged explicitly (no `git add -A`), the full diff is no longer injected into context. `publish` is a Claude Code skill with `disable-model-invocation`.
+- **settings.example.json** — one guard entry for `Bash|Edit|Write|MultiEdit|NotebookEdit|Read|Grep` with `timeout: 10` (was three entries without a timeout; `Grep` and `NotebookEdit` never reached the guard), timeouts on notification hooks, `permissions.defaultMode: "auto"`. The same file works on Windows: hooks run in Git Bash, where `$HOME` expands.
+- **.codex/hooks/guard.py** — synced with `.claude/hooks/guard.py` (closed bypasses, no `ask`, fail-open); the June copy blocked every call on malformed input. `.codex/hooks.json` gets timeouts.
+- **config.toml.sample** — dropped `[features]` flags that are defaults or no longer exist (`codex_hooks`, `multi_agent`, `plugins`, `tool_suggest`) and the no-op `notify` entry: `notification.py` does nothing without flags, completion alerts come from the Stop hook.
+- **CLAUDE.md** — Context7 section removed.
+- **README.md** — setup copies skills only and uses one settings file on every OS; LSP plugins need their language servers on `PATH`; skills tip rewritten.
 - **guard.py** — no `ask` verdicts any more: every rule is `deny` with an actionable reason or `allow` + log. A hook `ask` in a `bypassPermissions` session can still prompt and stall an unattended run (observed: 46 h). Former asks → deny: `git push --force` (hint `--force-with-lease`), `--mirror`, deleting `main`/`master`, `git reset --hard` / `git clean -f` only when there is something to lose, `rm -r` of `.`/`..`/protected `$HOME` dirs; → allow: `push --delete` of feature branches, `docker system prune -a`, `gh release delete`, `curl | sh`, local cp/mv of key material.
 - **guard.py** — closed bypasses: `$(…)` inside double quotes, heredoc or stdin piped into a shell, `find -delete` / `-exec rm`, `python -c` / `node -e` deletions, path traversal (`/tmp/../home`), Bash writes (`sed -i`, `tee`, `cp`, `mv`, `ln`, redirects) to the deployed guard or `authorized_keys`, worktree-wide `git checkout/restore .`, `git stash clear`, `push :ref`, combined `-fu`, archiving/uploading `~/.ssh`, `Grep` into secret paths. `.pem`/`.crt` count as secrets only when they contain `PRIVATE KEY`; the fork-bomb check no longer fires on quoted text.
 - **guard.py** — fail-open: invalid stdin or an internal error now exits 0 (was exit 2, which blocked every tool call); `evaluate()` receives the hook's `cwd`.
-- **test_guard.py** — 82 → 132 cases; no case may expect `ask`. Replay of 16,033 logged calls: 0 ask, 2 new deny (both intended), the public-CA false deny fixed.
+- **test_guard.py** — regression corpus of 132 real false positives and bypasses (`uv run --no-project .claude/hooks/test_guard.py`); no case may expect `ask`. Replay of 16,033 logged calls: 0 ask, 2 new deny (both intended), the public-CA false deny fixed.
 - **statusline.py** — context segment shows tokens in context instead of percentage (`[#------] 172k`, from `context_window.total_input_tokens`); bar color still follows `used_percentage`.
-- **guard.py** — detection core rewritten from raw-substring regex to structure-aware shell analysis (heredoc stripping, quote-aware segment splitting, shlex tokenization, wrapper skipping for `sudo`/`env`/`timeout`/`xargs`, `bash -c`/`eval` recursion). Replay of 227 historical blocks: 219 were false positives (string literals, commit messages, grep patterns, `curl | python3 -c` JSON parsing, `/home` paths in unrelated parts of compound commands) — now 219 allow / 7 ask / 1 deny.
+- **guard.py** — detection core rewritten from raw-substring regex to structure-aware shell analysis (heredoc stripping, quote-aware segment splitting, shlex tokenization, wrapper skipping for `sudo`/`env`/`timeout`/`xargs`, `bash -c`/`eval` recursion). Replay of 227 historical blocks: 219 were false positives (string literals, commit messages, grep patterns, `curl | python3 -c` JSON parsing, `/home` paths in unrelated parts of compound commands) — now allowed.
 - **guard.py** — logging switched from rewrite-the-whole-JSON-array (`pre_tool_use.json`) to append-only `pre_tool_use.jsonl` with 5 MB rotation; input truncated to 500 chars.
 - **.claude/skills/{commit,push-and-pr}/SKILL.md** — added `disallowed-tools: [Edit, Write, MultiEdit, NotebookEdit]` (Claude Code ≥ v2.1.152) so git skills can never mutate files; `allowed-tools: [Bash]` stays for auto-approved git/gh commands (the two fields are complementary — auto-approve vs remove-from-pool).
 - **notification.py** — added short desktop notification and audio playback timeouts so Stop hooks cannot hang on `notify-send`/`ffplay`.
 - **README.md** — Codex setup now includes `/hooks` review/trust step; status line note clarifies current Codex built-in-only customization.
-- **README.md** — Slash Commands bullet renamed to "Skills + Slash Commands"; install step copies `.claude/skills` alongside commands.
 - **.codex/skills/commit/SKILL.md** — added chain-to-push step; same triggers as Claude Code skill.
 - **CLAUDE.md / AGENTS.md** — point cleanups: dropped outdated Opus 4.5/Sonnet 4 line, removed three duplicated bullets (`Structured answers; minimal output`, `Parallelize independent work`, `No sycophantic openers`).
 
 ### Removed
 
+- **.claude/commands/** — `ultrathink` (the keyword works natively), `prime` (replaced by `repo-context`), `release` (never used); `publish` moved to skills. Same for `.codex/skills/{ultrathink,prime,release}`.
+- **settings.local.json.windows** — hooks on Windows run in Git Bash or PowerShell, and neither expands `%USERPROFILE%`: every guard call pointed at a missing file, exited 2 and blocked the tool.
+- **settings.example.json** — `enableAllProjectMcpServers` (auto-approved MCP servers from any cloned repository) and `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`.
 - **.claude/commands/research.md** — superseded by Claude Code's native bundled `/deep-research` skill (multi-agent harness with adversarial fact-checking; ≥ v2.1.158). Codex keeps `.codex/skills/research/` — Codex has no native deep-research equivalent.
 - **.claude/commands/commit.md, push-and-pr.md** — replaced by skills with same names; `/commit` and `/push-and-pr` still work via skill slash invocation.
 

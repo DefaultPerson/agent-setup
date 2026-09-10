@@ -97,13 +97,10 @@ VII. AI-Driven Development
 </coding_principles>
 
 <tooling>
-## MCP Servers
-- **Context7 (docs):** Library documentation lookup. `resolve-library-id → query-docs` (version/topic). Pin freshness, quotes ≤25 words.
-
 ## Tool Selection
 - Code search (exact) → Grep
 - Code search (broad) → Agent (subagent_type: Explore)
-- Documentation → Context7 or WebSearch+WebFetch
+- Documentation → WebSearch+WebFetch
 - Deep analysis → native extended thinking; add the keyword `ultrathink` to the prompt
 
 ## Built-in Tools (preferred)
