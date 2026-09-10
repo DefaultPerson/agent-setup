@@ -98,18 +98,18 @@ VII. AI-Driven Development
 
 <tooling>
 ## MCP Servers
-- **Context7 (docs):** Library documentation lookup. `resolve-library-id → get-library-docs` (version/topic). Pin freshness, quotes ≤25 words.
+- **Context7 (docs):** Library documentation lookup. `resolve-library-id → query-docs` (version/topic). Pin freshness, quotes ≤25 words.
 
 ## Tool Selection
 - Code search (exact) → Grep
 - Code search (broad) → Agent (subagent_type: Explore)
 - Documentation → Context7 or WebSearch+WebFetch
-- Deep analysis → Native extended thinking (/ultrathink)
+- Deep analysis → native extended thinking; add the keyword `ultrathink` to the prompt
 
 ## Built-in Tools (preferred)
 - **WebSearch** — web search with current data
 - **WebFetch** — fetch and parse web pages
-- **Extended thinking** — native; trigger with `/ultrathink`
+- **Extended thinking** — native; the keyword `ultrathink` in a prompt requests deeper reasoning
 
 ## Orchestration
 - Coordination: decomposition; dependencies: docs → implementation → tests; unified response.
