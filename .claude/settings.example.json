@@ -1,45 +1,31 @@
 {
+  "permissions": {
+    "defaultMode": "auto"
+  },
   "hooks": {
     "PreToolUse": [{
-      "matcher": "Bash",
+      "matcher": "Bash|Edit|Write|MultiEdit|NotebookEdit|Read|Grep",
       "hooks": [{
         "type": "command",
-        "command": "uv run --no-project \"$HOME/.claude/hooks/guard.py\""
-      }]
-    }, {
-      "matcher": "Edit|Write|MultiEdit",
-      "hooks": [{
-        "type": "command",
-        "command": "uv run --no-project \"$HOME/.claude/hooks/guard.py\""
-      }]
-    }, {
-      "matcher": "Read",
-      "hooks": [{
-        "type": "command",
-        "command": "uv run --no-project \"$HOME/.claude/hooks/guard.py\""
+        "command": "uv run --no-project \"$HOME/.claude/hooks/guard.py\"",
+        "timeout": 10
       }]
     }],
     "Stop": [{
-      "matcher": "",
       "hooks": [{
         "type": "command",
-        "command": "uv run --no-project \"$HOME/.claude/hooks/notification.py\" --notify"
+        "command": "uv run --no-project \"$HOME/.claude/hooks/notification.py\" --notify",
+        "timeout": 15
       }]
     }],
     "Notification": [{
-      "matcher": "",
       "hooks": [{
         "type": "command",
-        "command": "uv run --no-project \"$HOME/.claude/hooks/notification.py\" --permission"
+        "command": "uv run --no-project \"$HOME/.claude/hooks/notification.py\" --permission",
+        "timeout": 15
       }]
     }]
   },
-  "permissions": {
-    "allow": [],
-    "deny": [],
-    "ask": []
-  },
-  "enableAllProjectMcpServers": true,
   "statusLine": {
     "type": "command",
     "command": "uv run --no-project \"$HOME/.claude/hooks/statusline.py\"",
@@ -47,7 +33,6 @@
     "refreshInterval": 60
   },
   "env": {
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "DESKTOP_NOTIFICATIONS": "1"
   },
   "attribution": {

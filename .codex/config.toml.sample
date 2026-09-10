@@ -6,14 +6,10 @@ model = "gpt-5.4"
 model_reasoning_effort = "high"
 personality = "pragmatic"
 approval_policy = "on-request"
-notify = ["python3", "~/.codex/hooks/notification.py"]
 
 [features]
-multi_agent = true
-codex_hooks = true
+# hooks and multi_agent are on by default; completion alerts come from the Stop hook in hooks.json
 apps = false
-plugins = false
-tool_suggest = false
 
 [tui]
 # Configure interactively with /statusline.
