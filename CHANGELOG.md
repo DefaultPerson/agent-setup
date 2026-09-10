@@ -22,6 +22,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- **statusline.py** — context segment shows tokens in context instead of percentage (`[#------] 172k`, from `context_window.total_input_tokens`); bar color still follows `used_percentage`.
 - **guard.py** — detection core rewritten from raw-substring regex to structure-aware shell analysis (heredoc stripping, quote-aware segment splitting, shlex tokenization, wrapper skipping for `sudo`/`env`/`timeout`/`xargs`, `bash -c`/`eval` recursion). Replay of 227 historical blocks: 219 were false positives (string literals, commit messages, grep patterns, `curl | python3 -c` JSON parsing, `/home` paths in unrelated parts of compound commands) — now 219 allow / 7 ask / 1 deny.
 - **guard.py** — logging switched from rewrite-the-whole-JSON-array (`pre_tool_use.json`) to append-only `pre_tool_use.jsonl` with 5 MB rotation; input truncated to 500 chars.
 - **.claude/skills/{commit,push-and-pr}/SKILL.md** — added `disallowed-tools: [Edit, Write, MultiEdit, NotebookEdit]` (Claude Code ≥ v2.1.152) so git skills can never mutate files; `allowed-tools: [Bash]` stays for auto-approved git/gh commands (the two fields are complementary — auto-approve vs remove-from-pool).
