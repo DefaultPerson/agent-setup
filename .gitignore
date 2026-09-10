@@ -20,7 +20,3 @@ __pycache__/
 # Auto Claude data directory
 .auto-claude/
 .claude-diary/
-
-# claude-mem plugin spam (creates CLAUDE.md in subdirectories)
-.claude/hooks/CLAUDE.md
-.claude/commands/CLAUDE.md

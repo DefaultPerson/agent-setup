@@ -1,14 +1,14 @@
 # agent-setup
 
-Universal setup for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and [OpenAI Codex CLI](https://developers.openai.com/codex/cli) — security hooks, notifications, status line, and productivity commands.
+Universal setup for [Claude Code](https://code.claude.com/docs) and [OpenAI Codex CLI](https://developers.openai.com/codex/cli) — security hooks, notifications, status line, and skills.
 
 ## Features
 
-- **Security Guard** — blocks dangerous commands (`rm -rf /`, credential reads, privileged docker, etc.)
+- **Security Guard** — denies destructive and credential-leaking commands (`rm -rf ~`, `git push --force`, private key reads, archiving `~/.ssh`) with a reason instead of a prompt, so unattended runs don't stall
 - **TTS Notifications** — cached voice alerts when Claude finishes or needs input
 - **Desktop Notifications** — native OS notifications (Linux, macOS, Windows)
 - **Status Line** — project, branch, model, effort, rate limits with time to reset, context tokens, session cost
-- **Skills + Slash Commands** — `commit` («сделай коммит и пуш» — auto-chain), `push-and-pr`, `/ultrathink`, `/prime`, `/publish`, `/release` (+ `/research` on Codex; on Claude Code use the native `/deep-research` skill)
+- **Skills** — `commit` («сделай коммит и пуш» chains into a PR), `push-and-pr`, `/publish`, `/repo-context` (+ `research` on Codex; on Claude Code use the built-in `/deep-research`)
 - **Cross-platform** — Linux, macOS, Windows
 
 ---
@@ -20,13 +20,13 @@ Universal setup for [Claude Code](https://docs.anthropic.com/en/docs/claude-code
 Paste into Claude Code — or follow the steps manually:
 
 ```
-Prerequisites: Node.js 18+, uv (python package manager), ffmpeg or mpv (audio for TTS).
+Prerequisites: uv (python package manager), ffmpeg or mpv (audio for TTS).
 
 1. git clone https://github.com/DefaultPerson/agent-setup.git && cd agent-setup
 2. cp -r .claude/hooks ~/.claude/hooks
-3. cp -r .claude/commands ~/.claude/commands && cp -r .claude/skills ~/.claude/skills
+3. cp -r .claude/skills ~/.claude/skills
 4. cp .claude/settings.example.json ~/.claude/settings.json
-   # Windows: cp .claude/settings.local.json.windows "$env:USERPROFILE/.claude/settings.json"
+   # Windows: hooks and the status line run in Git Bash (install Git for Windows); keep the $HOME paths as they are
 5. cp CLAUDE.md ~/.claude/CLAUDE.md (optional — author's coding style and rules)
 6. Install recommended plugins (see below)
 7. Add shell aliases (see below)
@@ -37,7 +37,7 @@ Prerequisites: Node.js 18+, uv (python package manager), ffmpeg or mpv (audio fo
 
 ### Recommended Plugins
 
-LSP, context7, frontend-design are available in the default marketplace — install via `/plugin` → search.
+LSP (`pyright-lsp`, `gopls-lsp`, `typescript-lsp`) and `frontend-design` are in the default marketplace — install via `/plugin`. An LSP plugin does nothing until its language server is on `PATH`: `pyright-langserver` (`uv tool install pyright`), `gopls` (`go install golang.org/x/tools/gopls@latest`), `typescript-language-server`.
 
 ```bash
 # Browser automation for AI agents
@@ -126,7 +126,7 @@ alias cx="codex" cxr="codex resume" cxd="codex --yolo" cxdr="codex resume --yolo
 > **If something doesn't work — just ask Claude Code/Codex to fix it.** Describe the problem and it will diagnose and resolve it.
 
 > [!TIP]
-> **Create SKILLs for repetitive tasks.** Instead of doing any task manually, create a SKILL for it. First version gives junior-mid level results. Then iterate until it matches your quality — 100-1000x time savings.
+> **Put in skills what the model can't know** — your conventions, environment gotchas, domain knowledge. Skip step-by-step procedures it already does well: they go stale and override its judgment.
 
 ## References
 
