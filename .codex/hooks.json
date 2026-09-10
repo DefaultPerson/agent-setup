@@ -5,7 +5,8 @@
         "matcher": "Bash",
         "hooks": [{
           "type": "command",
-          "command": "python3 ~/.codex/hooks/guard.py"
+          "command": "python3 ~/.codex/hooks/guard.py",
+          "timeout": 10
         }]
       }
     ],
@@ -13,7 +14,8 @@
       {
         "hooks": [{
           "type": "command",
-          "command": "python3 ~/.codex/hooks/notification.py --notify"
+          "command": "python3 ~/.codex/hooks/notification.py --notify",
+          "timeout": 15
         }]
       }
     ]
