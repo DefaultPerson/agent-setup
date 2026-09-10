@@ -63,7 +63,7 @@ Arguments: [optional version override]
    git push origin HEAD
    git tag -a <version> -m "Release <version>"
    git push origin <version>
-   gh release create <version> --title "<version>" --notes-file /tmp/release-notes.md
+   gh release create <version> --title "<version>" --notes-file "$TMPDIR/release-notes.md"
    ```
 
 7. **Output**:

@@ -98,7 +98,7 @@ VII. AI-Driven Development
 
 <tooling>
 ## MCP Servers
-- **Context7 (docs):** Library documentation lookup. `resolve-library-id → get-library-docs` (version/topic). Pin freshness, quotes ≤25 words.
+- **Context7 (docs):** Library documentation lookup. `resolve-library-id → query-docs` (version/topic). Pin freshness, quotes ≤25 words.
 
 ## Tool Selection
 - Code search (exact) → grep/search tools

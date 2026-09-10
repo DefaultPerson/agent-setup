@@ -63,7 +63,7 @@ Arguments: [optional version override]
    # Tag and release
    git tag -a <version> -m "Release <version>"
    git push origin <version>
-   gh release create <version> --title "<version>" --notes-file /tmp/release-notes.md
+   gh release create <version> --title "<version>" --notes-file "$TMPDIR/release-notes.md"
    ```
    - If user wants to attach files — ask which files, then `gh release upload <version> <files...>`
 
