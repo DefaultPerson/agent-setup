@@ -43,7 +43,8 @@
   "statusLine": {
     "type": "command",
     "command": "uv run --no-project \"$HOME/.claude/hooks/statusline.py\"",
-    "padding": 0
+    "padding": 0,
+    "refreshInterval": 60
   },
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",

@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **statusline.py** — time left until each rate-limit window resets, dim, after the percentages: `1%/76% (4h/48h)`; minutes under an hour (`40m`). Reads `rate_limits.*.resets_at`.
+- **settings.example.json / settings.local.json.windows** — `statusLine.refreshInterval: 60`, so the reset countdown keeps ticking while the session is idle (otherwise the status line re-runs only on events).
 - **statusline.py** — session cost segment (`$N.NN`, muted gold, tail of line 2) from Claude Code's `cost.total_cost_usd` (API-equivalent estimate: token usage incl. cache × model list price). Guarded by `if cost_usd:` — hidden when absent/zero, so it no-ops on subscriptions that don't surface it.
 - **CLAUDE.md** — `## Models` guidance: when running as Fable 5, default Workflow/subagent `model` to Opus — Fable agents are often redundant; keep Fable for the driving loop and delegate real work to Opus.
 - **guard.py** — `test_guard.py` regression corpus (82 cases) built from real false positives harvested from session transcripts; run with `uv run --no-project .claude/hooks/test_guard.py`.
@@ -36,6 +38,10 @@ All notable changes to this project will be documented in this file.
 
 - **.claude/commands/research.md** — superseded by Claude Code's native bundled `/deep-research` skill (multi-agent harness with adversarial fact-checking; ≥ v2.1.158). Codex keeps `.codex/skills/research/` — Codex has no native deep-research equivalent.
 - **.claude/commands/commit.md, push-and-pr.md** — replaced by skills with same names; `/commit` and `/push-and-pr` still work via skill slash invocation.
+
+### Fixed
+
+- **statusline.py** — rate-limit segment disappeared entirely when the 5-hour window was absent (Claude Code drops a window once it resets, e.g. while idle); a missing window now renders as `-` (`-/76% (-/48h)`).
 
 ## 2026-04-06
 

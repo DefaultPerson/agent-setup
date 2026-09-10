@@ -6,6 +6,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 # Force UTF-8 stdout so the accent rail (▌), arrow separator (›) and ⚠ marker
@@ -59,6 +60,12 @@ def format_bar(pct: float, width: int = 7) -> str:
     bar_filled = "#" * filled
     bar_empty = "-" * (width - filled)
     return f"{color}[{bar_filled}{D}{bar_empty}{R}{color}]{R}", color
+
+
+def fmt_left(resets_at: float) -> str:
+    """Time left until a rate-limit window resets: '4h', or '40m' under an hour."""
+    left = max(0, resets_at - time.time())
+    return f"{left // 3600:.0f}h" if left >= 3600 else f"{left // 60:.0f}m"
 
 
 def main():
@@ -121,19 +128,21 @@ def main():
     if effort:
         line2.append(f"{EFFORT}{effort}{R}")
 
-    # Rate limits — compact [5h/7d%]
-    rl5 = five_hour.get("used_percentage")
-    rl7 = seven_day.get("used_percentage")
-    if rl5 is not None:
-        worst = max(rl5, rl7 or 0)
+    # Rate limits — compact 5h%/7d% + dim time left to reset: "1%/76% (4h/48h)".
+    # CC drops a window once it resets, so an absent one shows as "-".
+    windows = (five_hour, seven_day)
+    pcts = [w.get("used_percentage") for w in windows]
+    if any(p is not None for p in pcts):
+        worst = max(p for p in pcts if p is not None)
         if worst < 50:
             rl_color = GREEN
         elif worst < 80:
             rl_color = YELLOW
         else:
             rl_color = RED
-        rl_text = f"{rl5:.0f}%/{rl7:.0f}%" if rl7 is not None else f"{rl5:.0f}%"
-        line2.append(f"{rl_color}{rl_text}{R}")
+        rl_text = "/".join(f"{p:.0f}%" if p is not None else "-" for p in pcts)
+        left = "/".join(fmt_left(w["resets_at"]) if w.get("resets_at") else "-" for w in windows)
+        line2.append(f"{rl_color}{rl_text}{R} {D}({left}){R}")
 
     # Context bar — bar + tokens in context, in k (e.g. [####---] 133k)
     if pct is not None:
