@@ -2,14 +2,15 @@
 # Equivalent of .claude/settings.example.json
 # Copy to ~/.codex/config.toml and edit paths/keys
 
-model = "gpt-5.4"
+model = "gpt-5.6-terra"
 model_reasoning_effort = "high"
 personality = "pragmatic"
 approval_policy = "on-request"
 
 [features]
-# hooks and multi_agent are on by default; completion alerts come from the Stop hook in hooks.json
+# hooks, multi_agent and plugins are on by default; completion alerts come from the Stop hook in hooks.json
 apps = false
+tool_suggest = false
 
 [tui]
 # Configure interactively with /statusline.
@@ -34,12 +35,13 @@ status_line = [
 
 [shell_environment_policy]
 inherit = "core"
-set = { DESKTOP_NOTIFICATIONS = "1" }
 
 # MCP Servers
 [mcp_servers.context7]
 url = "https://mcp.context7.com/mcp"
-headers = { CONTEXT7_API_KEY = "$CONTEXT7_API_KEY" }
+# With a Context7 key: export CONTEXT7_API_KEY and uncomment (header name -> env var).
+# Left enabled without the variable, `codex doctor` warns about a missing MCP env var.
+# env_http_headers = { CONTEXT7_API_KEY = "CONTEXT7_API_KEY" }
 
 # Hook trust state is intentionally not templated here because Codex keys it by
 # the absolute local hooks.json path. After copying hooks.json, open /hooks and
