@@ -16,19 +16,19 @@ All notable changes to this project will be documented in this file.
 - **config.toml.sample** — documented Codex `tui.status_line` built-in items and `/hooks` trust workflow.
 - **config.toml.sample** — enabled Codex theme-aware status line colors and added PR/branch/context progress items.
 - **notification.py** — re-introduced `DESKTOP_NOTIFICATIONS` env toggle (default `1`); set to `0|false|no|off` to suppress notify-send/osascript/Toast while keeping audio.
-- **settings.example.json / config.toml.sample** — `DESKTOP_NOTIFICATIONS=1` documented in env/shell_environment_policy.
+- **settings.example.json** — `DESKTOP_NOTIFICATIONS=1` documented in `env`.
 - **.claude/skills/{commit,push-and-pr}/SKILL.md** — natural-language triggers (ru+en) for Claude Code; `commit` auto-chains to `push-and-pr` when user mentions push.
 - **README.md** — Tip on disabling desktop notifications.
 - **AGENTS.md** — added `NEVER add Co-Authored-By` rules for parity with CLAUDE.md.
 
 ### Changed
 
-- **skills** — `commit`, `push-and-pr`, `publish` (Claude Code + Codex) and `research` (Codex) rewritten from step-by-step procedures into intent + constraints: the PR base is the repository's default branch instead of an assumed `main`, files are staged explicitly (no `git add -A`), the full diff is no longer injected into context. `publish` is a Claude Code skill with `disable-model-invocation`.
+- **skills** — `commit`, `push-and-pr`, `publish` (Claude Code + Codex) rewritten from step-by-step procedures into intent + constraints: the PR base is the repository's default branch instead of an assumed `main`, files are staged explicitly (no `git add -A`), the full diff is no longer injected into context. `publish` is a Claude Code skill with `disable-model-invocation`.
 - **settings.example.json** — one guard entry for `Bash|Edit|Write|MultiEdit|NotebookEdit|Read|Grep` with `timeout: 10` (was three entries without a timeout; `Grep` and `NotebookEdit` never reached the guard), timeouts on notification hooks, `permissions.defaultMode: "auto"`. The same file works on Windows: hooks run in Git Bash, where `$HOME` expands.
 - **.codex/hooks/guard.py** — synced with `.claude/hooks/guard.py` (closed bypasses, no `ask`, fail-open); the June copy blocked every call on malformed input. `.codex/hooks.json` gets timeouts.
-- **config.toml.sample** — dropped `[features]` flags that are defaults or no longer exist (`codex_hooks`, `multi_agent`, `plugins`, `tool_suggest`) and the no-op `notify` entry: `notification.py` does nothing without flags, completion alerts come from the Stop hook.
+- **config.toml.sample** — for Codex 0.154: `model = "gpt-5.6-terra"` (`gpt-5.4` is gone from the model catalog); dropped `codex_hooks` (deprecated alias of `hooks`) and `multi_agent`, both on by default, and the no-op `notify` entry (`notification.py` does nothing without flags; completion alerts come from the Stop hook). The Context7 server used `headers`, which Codex does not read — replaced by a commented `env_http_headers` example. `DESKTOP_NOTIFICATIONS` is no longer set through `[shell_environment_policy]`: Codex runs hooks with its own process environment, so the toggle never reached `notification.py`.
 - **CLAUDE.md** — Context7 section removed.
-- **README.md** — setup copies skills only and uses one settings file on every OS; LSP plugins need their language servers on `PATH`; skills tip rewritten.
+- **README.md** — setup copies skills only and uses one settings file on every OS; LSP plugins need their language servers on `PATH`; skills tip rewritten; Codex: setup copies skills, hooks must be re-trusted after any `hooks.json` edit, `codex update` and recovery from a broken npm update; the desktop-notification tip exports the variable instead.
 - **guard.py** — no `ask` verdicts any more: every rule is `deny` with an actionable reason or `allow` + log. A hook `ask` in a `bypassPermissions` session can still prompt and stall an unattended run (observed: 46 h). Former asks → deny: `git push --force` (hint `--force-with-lease`), `--mirror`, deleting `main`/`master`, `git reset --hard` / `git clean -f` only when there is something to lose, `rm -r` of `.`/`..`/protected `$HOME` dirs; → allow: `push --delete` of feature branches, `docker system prune -a`, `gh release delete`, `curl | sh`, local cp/mv of key material.
 - **guard.py** — closed bypasses: `$(…)` inside double quotes, heredoc or stdin piped into a shell, `find -delete` / `-exec rm`, `python -c` / `node -e` deletions, path traversal (`/tmp/../home`), Bash writes (`sed -i`, `tee`, `cp`, `mv`, `ln`, redirects) to the deployed guard or `authorized_keys`, worktree-wide `git checkout/restore .`, `git stash clear`, `push :ref`, combined `-fu`, archiving/uploading `~/.ssh`, `Grep` into secret paths. `.pem`/`.crt` count as secrets only when they contain `PRIVATE KEY`; the fork-bomb check no longer fires on quoted text.
 - **guard.py** — fail-open: invalid stdin or an internal error now exits 0 (was exit 2, which blocked every tool call); `evaluate()` receives the hook's `cwd`.
@@ -44,10 +44,10 @@ All notable changes to this project will be documented in this file.
 
 ### Removed
 
-- **.claude/commands/** — `ultrathink` (the keyword works natively), `prime` (replaced by `repo-context`), `release` (never used); `publish` moved to skills. Same for `.codex/skills/{ultrathink,prime,release}`.
+- **.claude/commands/** — `ultrathink` (the keyword works natively), `prime` (replaced by `repo-context`), `release` (never used); `publish` moved to skills. Same for `.codex/skills/{ultrathink,prime,release}`; `.codex/skills/research` is no longer needed.
 - **settings.local.json.windows** — hooks on Windows run in Git Bash or PowerShell, and neither expands `%USERPROFILE%`: every guard call pointed at a missing file, exited 2 and blocked the tool.
 - **settings.example.json** — `enableAllProjectMcpServers` (auto-approved MCP servers from any cloned repository) and `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`.
-- **.claude/commands/research.md** — superseded by Claude Code's native bundled `/deep-research` skill (multi-agent harness with adversarial fact-checking; ≥ v2.1.158). Codex keeps `.codex/skills/research/` — Codex has no native deep-research equivalent.
+- **.claude/commands/research.md** — superseded by Claude Code's native bundled `/deep-research` skill (multi-agent harness with adversarial fact-checking; ≥ v2.1.158).
 - **.claude/commands/commit.md, push-and-pr.md** — replaced by skills with same names; `/commit` and `/push-and-pr` still work via skill slash invocation.
 
 ### Fixed

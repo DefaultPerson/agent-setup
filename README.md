@@ -8,7 +8,7 @@ Universal setup for [Claude Code](https://code.claude.com/docs) and [OpenAI Code
 - **TTS Notifications** — cached voice alerts when Claude finishes or needs input
 - **Desktop Notifications** — native OS notifications (Linux, macOS, Windows)
 - **Status Line** — project, branch, model, effort, rate limits with time to reset, context tokens, session cost
-- **Skills** — `commit` («сделай коммит и пуш» chains into a PR), `push-and-pr`, `/publish`, `/repo-context` (+ `research` on Codex; on Claude Code use the built-in `/deep-research`)
+- **Skills** — `commit` («сделай коммит и пуш» chains into a PR), `push-and-pr`, `/publish`, `/repo-context`; for research use Claude Code's built-in `/deep-research`
 - **Cross-platform** — Linux, macOS, Windows
 
 ---
@@ -81,15 +81,17 @@ Prerequisites: Node.js 18+, uv (python package manager), ffmpeg or mpv (audio fo
 1. git clone https://github.com/DefaultPerson/agent-setup.git && cd agent-setup
 2. cp -r .codex/hooks ~/.codex/hooks
 3. cp .codex/hooks.json ~/.codex/hooks.json
-4. cp .codex/config.toml.sample ~/.codex/config.toml
-5. cp AGENTS.md ~/.codex/AGENTS.md (optional — author's coding style and rules)
-6. Edit ~/.codex/config.toml — set API keys, model preferences
-7. Add MCP servers (see below)
+4. cp -r .codex/skills ~/.codex/skills
+5. cp .codex/config.toml.sample ~/.codex/config.toml
+6. cp AGENTS.md ~/.codex/AGENTS.md (optional — author's coding style and rules)
+7. Edit ~/.codex/config.toml — set API keys, model preferences; add MCP servers with `codex mcp add`
 8. Add shell aliases (see below)
-9. Open `/hooks` in Codex and trust the PreToolUse + Stop hooks
-10. Verify everything works
+9. Open `/hooks` in Codex and trust the PreToolUse + Stop hooks — again after any edit to hooks.json: trust is pinned to each hook's command, matcher and timeout, and a changed hook is skipped until re-trusted
+10. Verify everything works (`codex doctor`)
 11. Delete agent-setup (repo no longer needed after setup)
 ```
+
+Update with `codex update`. If an npm update fails with `ENOTEMPTY`, or Codex then fails with `Missing optional dependency @openai/codex-<platform>`, delete `$(npm prefix -g)/lib/node_modules/@openai/{codex,.codex-*}` and reinstall with `npm i -g @openai/codex@latest`.
 
 **Key differences from Claude Code:**
 - Config: `config.toml` (TOML) instead of `settings.json`
@@ -117,7 +119,7 @@ alias cx="codex" cxr="codex resume" cxd="codex --yolo" cxdr="codex resume --yolo
 ## Tips
 
 > [!TIP]
-> **Disable desktop notifications** — set `DESKTOP_NOTIFICATIONS=0` in `~/.claude/settings.json` (`env` section) or `~/.codex/config.toml` (`[shell_environment_policy].set`). Audio TTS keeps working.
+> **Disable desktop notifications** — set `DESKTOP_NOTIFICATIONS=0` in `~/.claude/settings.json` (`env` section); for Codex, export it in the shell that starts Codex (hooks get Codex's own environment, not `[shell_environment_policy]`). Audio TTS keeps working.
 
 > [!TIP]
 > **Terminal as Editor Tab (VS Code)**: `Cmd/Ctrl+Shift+P` → "Terminal: Create New Terminal in Editor Area" — opens terminal as a tab next to your code, not in the bottom panel.
