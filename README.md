@@ -4,7 +4,7 @@ Universal setup for [Claude Code](https://code.claude.com/docs) and [OpenAI Code
 
 ## Features
 
-- **Security Guard** — denies destructive and credential-leaking commands (`rm -rf ~`, `git push --force`, private key reads, archiving `~/.ssh`) with a reason instead of a prompt, so unattended runs don't stall
+- **Security Guard** — denies destructive and credential-leaking commands (`rm -rf ~`, `git push --force`, private key reads, archiving `~/.ssh`) with a reason instead of a prompt, so unattended runs don't stall; also catches a `pkill -f` that would kill the agent's own shell, and `systemctl stop|restart` of units listed in `GUARD_PROTECTED_UNITS`
 - **TTS Notifications** — cached voice alerts when Claude finishes or needs input
 - **Desktop Notifications** — native OS notifications (Linux, macOS, Windows)
 - **Status Line** — project, branch, model, effort, rate limits with time to reset, context tokens, session cost

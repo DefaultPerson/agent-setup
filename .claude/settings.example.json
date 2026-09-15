@@ -33,7 +33,8 @@
     "refreshInterval": 60
   },
   "env": {
-    "DESKTOP_NOTIFICATIONS": "1"
+    "DESKTOP_NOTIFICATIONS": "1",
+    "GUARD_PROTECTED_UNITS": ""
   },
   "attribution": {
     "commit": "",

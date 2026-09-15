@@ -15,6 +15,7 @@ Run: uv run --no-project .claude/hooks/test_guard.py
 """
 
 import importlib.util
+import json
 import os
 import subprocess
 import sys
@@ -159,7 +160,57 @@ BASH_CASES = [
     (D, "echo y | sudo bash -c 'rm -rf /etc'"),
     (D, 'docker run -v /:/host alpine'),
     (D, 'echo broken > /dev/sda'),
+
+    # --- pkill/pgrep -f matching this very command line (kills own shell) ---
+    (D, "pkill -f 'claude-bot'"),
+    (D, 'pkill -9f bot.py'),
+    (D, 'sudo pkill -ef "python3 worker.py"'),
+    (D, 'timeout 5 pkill -f worker'),
+    (D, 'pkill --full node'),
+    (D, 'pkill -f -u def worker'),           # -u consumes its value, not the pattern
+    (D, 'bash -c "pkill -f uvicorn"'),
+    (D, "ssh deploy@host 'pkill -f gunicorn'"),
+    (D, "ssh -p 2222 -o StrictHostKeyChecking=no h 'pkill -f bot'"),
+    (D, 'kill $(pgrep -f sing-box)'),        # pgrep feeding a kill
+    (D, 'kill -9 `pgrep -f ccgram`'),
+    (D, 'pgrep -f ccgram | xargs kill -9'),
+    (A, "pkill -f '[c]laude-bot'"),          # classic self-match dodge
+    (A, "pkill -f '^/usr/bin/python3 bot.py$'"),  # anchored: does not match the text
+    (A, 'pkill -x claude-bot'),
+    (A, 'pkill claude-bot'),                 # no -f: matches the process name only
+    (A, 'pkill -F /run/bot.pid'),
+    (A, 'pgrep -f sing-box'),                # pgrep alone does not kill
+    (A, 'pgrep -af python | head'),
+    (A, 'pgrep -f ccgram | wc -l'),
+    (A, 'kill "$(cat bot.pid)"'),
+    (A, "pkill -f '('"),                     # invalid ERE -> allow, never crash
+
+    # --- GUARD_PROTECTED_UNITS unset: systemctl stays untouched ---
+    (A, 'systemctl stop sing-box'),
+    (A, 'sudo systemctl restart ccgram'),
 ]
+
+# Evaluated with GUARD_PROTECTED_UNITS='sing-box,singbox-killswitch ccgram'.
+UNIT_CASES = [
+    (D, 'systemctl stop sing-box'),
+    (D, 'sudo systemctl restart sing-box.service'),
+    (D, 'systemctl --user stop ccgram'),
+    (D, 'sudo systemctl mask singbox-killswitch'),
+    (D, 'systemctl try-restart ccgram.service'),
+    (D, 'systemctl reload-or-restart ccgram'),
+    (D, 'sudo systemctl disable sing-box'),
+    (A, 'systemctl status sing-box'),
+    (A, 'systemctl start sing-box'),
+    (A, 'systemctl is-active ccgram'),
+    (A, 'systemctl show sing-box -p ActiveState'),
+    (A, 'systemctl cat ccgram'),
+    (A, 'systemctl list-units --failed'),
+    (A, 'sudo systemctl daemon-reload'),
+    (A, 'sudo systemctl restart nginx'),     # unit not on the list
+    (D, 'systemctl poweroff'),               # pre-existing rule still fires
+]
+
+PROTECTED_UNITS_ENV = 'sing-box,singbox-killswitch ccgram'
 
 TOOL_CASES = [
     (D, 'Read', {'file_path': '/home/def/.ssh/id_ed25519'}),
@@ -197,11 +248,21 @@ def run():
         assert expected in (A, D), 'ASK is not a valid expectation anymore'
     for expected, *_ in TOOL_CASES:
         assert expected in (A, D), 'ASK is not a valid expectation anymore'
+    for expected, *_ in UNIT_CASES:
+        assert expected in (A, D), 'ASK is not a valid expectation anymore'
 
+    os.environ.pop('GUARD_PROTECTED_UNITS', None)
     for expected, cmd in BASH_CASES:
         got, reason = guard.evaluate('Bash', {'command': cmd})
         if got != expected:
             failures.append(f'  [{NAMES[expected]} != {NAMES[got]}] {cmd!r}  ({reason})')
+
+    os.environ['GUARD_PROTECTED_UNITS'] = PROTECTED_UNITS_ENV
+    for expected, cmd in UNIT_CASES:
+        got, reason = guard.evaluate('Bash', {'command': cmd})
+        if got != expected:
+            failures.append(f'  [{NAMES[expected]} != {NAMES[got]}] (units) {cmd!r}  ({reason})')
+    os.environ.pop('GUARD_PROTECTED_UNITS', None)
     for expected, tool, tin in TOOL_CASES:
         got, reason = guard.evaluate(tool, tin)
         if got != expected:
@@ -231,7 +292,19 @@ def run():
         if proc.returncode != 0:
             failures.append(f'  [exit 0 != {proc.returncode}] main() invalid-JSON path  ({proc.stderr.strip()})')
 
-    total = len(BASH_CASES) + len(TOOL_CASES) + 3
+    # every deny reason reaching the model ends with the no-workaround sentence
+    with tempfile.TemporaryDirectory() as td:
+        env = dict(os.environ, CLAUDE_CONFIG_DIR=td)
+        proc = subprocess.run(
+            [sys.executable, str(Path(__file__).with_name('guard.py'))],
+            input=json.dumps({'tool_name': 'Bash', 'tool_input': {'command': 'rm -rf /'}}),
+            capture_output=True, text=True, env=env, timeout=15,
+        )
+        if proc.returncode != 2 or not proc.stderr.strip().endswith(guard.DENY_SUFFIX.strip()):
+            failures.append(f'  [deny suffix missing] exit={proc.returncode} '
+                            f'stderr={proc.stderr.strip()!r}')
+
+    total = len(BASH_CASES) + len(TOOL_CASES) + len(UNIT_CASES) + 4
     if failures:
         print(f'FAIL: {len(failures)}/{total} cases')
         print('\n'.join(failures))

@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **guard.py** — `pkill -f` / `pgrep -f` self-match rule: a full-match pattern (`-f`, `--full`, `-ef`, `-9f`, also after `sudo`/`timeout`, inside `bash -c`, `$(…)`, backticks, pipes and `ssh host '…'`) that matches the command line it is part of is denied, because the Bash tool's own `bash -c "<command>"` shell is in that pattern's way and dies with it (exit 144); `pgrep` is denied only when its output feeds a `kill`, and `[p]attern` or anchored patterns stay allowed.
+- **guard.py** — `GUARD_PROTECTED_UNITS` (comma/whitespace separated unit names, with or without `.service`): `systemctl stop|restart|disable|kill|mask|try-restart|reload-or-restart` on a listed unit is denied, while `status`, `start`, `show`, `cat`, `list-units` and `daemon-reload` stay allowed.
 - **.claude/skills/repo-context** — compact repository snapshot collected with `!` injections before the model runs; replaces `/prime`.
 - **statusline.py** — time left until each rate-limit window resets, dim, after the percentages: `1%/76% (4h/48h)`; minutes under an hour (`40m`). Reads `rate_limits.*.resets_at`.
 - **settings.example.json** — `statusLine.refreshInterval: 60`, so the reset countdown keeps ticking while the session is idle (otherwise the status line re-runs only on events).
@@ -23,6 +25,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- **guard.py** — every deny reason handed to the model now ends with “Use the alternative named here or report the block; don't reach the same effect through another command form.”, appended once in `main()` (the JSONL log keeps the bare reason).
 - **skills** — `commit`, `push-and-pr`, `publish` (Claude Code + Codex) rewritten from step-by-step procedures into intent + constraints: the PR base is the repository's default branch instead of an assumed `main`, files are staged explicitly (no `git add -A`), the full diff is no longer injected into context. `publish` is a Claude Code skill with `disable-model-invocation`.
 - **settings.example.json** — one guard entry for `Bash|Edit|Write|MultiEdit|NotebookEdit|Read|Grep` with `timeout: 10` (was three entries without a timeout; `Grep` and `NotebookEdit` never reached the guard), timeouts on notification hooks, `permissions.defaultMode: "auto"`. The same file works on Windows: hooks run in Git Bash, where `$HOME` expands.
 - **.codex/hooks/guard.py** — synced with `.claude/hooks/guard.py` (closed bypasses, no `ask`, fail-open); the June copy blocked every call on malformed input. `.codex/hooks.json` gets timeouts.

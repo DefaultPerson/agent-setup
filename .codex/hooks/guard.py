@@ -895,6 +895,148 @@ def echo_payload(args: list[str]) -> str | None:
     return ' '.join(parts) if parts else None
 
 
+# --- process control: pkill/pgrep that matches the agent's own shell -------
+
+# The Bash tool runs `bash -c "<command text>"`, so that shell's own argv holds
+# the command text: a `pkill -f PATTERN` whose regex matches it kills the shell
+# running it (tool exit 144, plain shell 143, over ssh 255).
+
+PKILL_VALUE_SHORT = set('uUgGtPsFd')   # short options that consume a value
+PKILL_VALUE_LONG = {
+    '--signal', '--uid', '--euid', '--group', '--pgroup', '--terminal',
+    '--parent', '--session', '--pidfile', '--delimiter', '--ns', '--nslist',
+}
+SSH_VALUE_SHORT = set('BbcDEeFIiJLlmOopQRSWw')
+
+# pgrep output fed into a kill within the same command line
+PGREP_TO_KILL_RE = re.compile(
+    r'\bkill\b[^|;\n]*(?:\$\(|`)[^)`]*\bpgrep\b'  # kill $(pgrep -f x) / `pgrep -f x`
+    r'|\bpgrep\b[^|]*\|[^|]*\bkill\b'              # pgrep -f x | xargs kill
+)
+
+SELF_PKILL_HINT = (
+    "matches this command's own shell, so it would kill itself (exit 144). "
+    'Stop by PID from a pid file or from a separate pgrep call, use systemctl '
+    'or docker stop, or write the pattern as [p]attern with the plain name '
+    'nowhere else in the command.'
+)
+
+
+def parse_pkill(args: list[str]) -> tuple[bool, str | None]:
+    """Return (full_match, pattern) for a pkill/pgrep argument list."""
+    full, i = False, 0
+    while i < len(args):
+        a = args[i]
+        if a == '--':
+            i += 1
+            break
+        if a.startswith('--'):
+            name = a.split('=', 1)[0]
+            if name == '--full':
+                full = True
+            elif name in PKILL_VALUE_LONG and '=' not in a:
+                i += 1
+            i += 1
+            continue
+        if a.startswith('-') and len(a) > 1:
+            for j, ch in enumerate(a[1:]):
+                if ch == 'f':
+                    full = True
+                elif ch in PKILL_VALUE_SHORT:
+                    if j == len(a) - 2:
+                        i += 1  # the value is the next token
+                    break       # otherwise the rest of the cluster is the value
+            i += 1
+            continue
+        return full, a
+    return full, args[i] if i < len(args) else None
+
+
+def check_self_pkill(cmd: str, args: list[str], top: str | None) -> tuple[int, str | None]:
+    """DENY a full-match pkill (or a pgrep feeding a kill) that matches `top`."""
+    if not top:
+        return ALLOW, None
+    full, pattern = parse_pkill(args)
+    if not full or not pattern:
+        return ALLOW, None
+    try:  # POSIX ERE is a subset of Python's syntax; anything else -> allow
+        if not re.search(pattern, top):
+            return ALLOW, None
+    except Exception:
+        return ALLOW, None
+    if cmd == 'pgrep' and not PGREP_TO_KILL_RE.search(top):
+        return ALLOW, None
+    return DENY, f"{cmd} -f '{pattern}' {SELF_PKILL_HINT}"
+
+
+def scan_pkill_text(text: str, top: str | None) -> tuple[int, str | None]:
+    """Look for a self-matching pkill/pgrep inside an unevaluated payload."""
+    worst, reason = ALLOW, None
+    for seg_text, _ in split_segments(text or ''):
+        try:
+            tokens = shlex.split(seg_text)
+        except ValueError:
+            continue
+        _, tokens = extract_redirects(tokens)
+        cmd, args = resolve_command(tokens)
+        if cmd in ('pkill', 'pgrep'):
+            v, r = check_self_pkill(cmd, args, top)
+            if v > worst:
+                worst, reason = v, r
+    return worst, reason
+
+
+def ssh_remote_command(args: list[str]) -> str:
+    """The remote payload of an ssh invocation (everything after the host)."""
+    pos, i = [], 0
+    while i < len(args):
+        a = args[i]
+        if a.startswith('--'):
+            i += 1
+            continue
+        if a.startswith('-') and len(a) > 1:
+            if a[-1] in SSH_VALUE_SHORT:
+                i += 1  # value lives in the next token
+            i += 1
+            continue
+        pos.append(a)
+        i += 1
+    return ' '.join(pos[1:])
+
+
+# --- systemd units protected on this machine ------------------------------
+
+PROTECTED_UNIT_ACTIONS = {
+    'stop', 'restart', 'disable', 'kill', 'mask', 'try-restart',
+    'reload-or-restart',
+}
+
+
+def _unit_key(name: str) -> str:
+    return name[:-8] if name.endswith('.service') else name
+
+
+def protected_units() -> set[str]:
+    """Unit names from $GUARD_PROTECTED_UNITS (comma/whitespace separated)."""
+    raw = os.environ.get('GUARD_PROTECTED_UNITS', '')
+    return {_unit_key(n) for n in re.split(r'[,\s]+', raw) if n}
+
+
+def check_systemctl(args: list[str]) -> tuple[int, str | None]:
+    positional = [a for a in args if not a.startswith('-')]
+    sub = positional[0] if positional else ''
+    if sub in ('poweroff', 'reboot', 'halt', 'kexec'):
+        return DENY, f'systemctl {sub}'
+    if sub in PROTECTED_UNIT_ACTIONS:
+        guarded = protected_units()
+        for unit in positional[1:]:
+            if _unit_key(unit) in guarded:
+                return DENY, (f"systemd unit '{unit}' is protected on this machine "
+                              '(GUARD_PROTECTED_UNITS); report the problem instead '
+                              'of stopping or restarting it.')
+    return ALLOW, None
+
+
 def check_command(cmd: str, args: list[str], cwd: str | None = None) -> tuple[int, str | None]:
     if cmd == 'rm':
         return check_rm(args, cwd)
@@ -905,9 +1047,9 @@ def check_command(cmd: str, args: list[str], cwd: str | None = None) -> tuple[in
     if cmd == 'init' and args and args[0] in ('0', '6'):
         return DENY, 'init 0/6: system halt/reboot'
     if cmd == 'systemctl':
-        sub = next((a for a in args if not a.startswith('-')), '')
-        if sub in ('poweroff', 'reboot', 'halt', 'kexec'):
-            return DENY, f'systemctl {sub}'
+        v, r = check_systemctl(args)
+        if v != ALLOW:
+            return v, r
     if cmd.startswith('mkfs'):
         return DENY, 'filesystem formatting'
     if cmd in ('fdisk', 'sfdisk', 'cfdisk', 'parted', 'wipefs'):
@@ -1002,9 +1144,12 @@ def _heredoc_consumer_execs(opening_line: str) -> bool:
 # evaluation
 # ---------------------------------------------------------------------------
 
-def evaluate_bash(command: str, depth: int = 0, cwd: str | None = None) -> tuple[int, str | None]:
+def evaluate_bash(command: str, depth: int = 0, cwd: str | None = None,
+                  top: str | None = None) -> tuple[int, str | None]:
     if not command or depth > 3:
         return ALLOW, None
+    if top is None:
+        top = command  # the text the Bash tool's own `bash -c` shell carries in argv
     text, heredocs = strip_heredocs(command)
 
     if IS_WINDOWS:
@@ -1027,7 +1172,7 @@ def evaluate_bash(command: str, depth: int = 0, cwd: str | None = None) -> tuple
     # heredoc bodies consumed by a shell run as shell code
     for opening, body in heredocs:
         if opening and _heredoc_consumer_execs(opening):
-            bump(*evaluate_bash(body, depth + 1, cwd))
+            bump(*evaluate_bash(body, depth + 1, cwd, top))
     if worst == DENY:
         return DENY, reason
 
@@ -1059,9 +1204,9 @@ def evaluate_bash(command: str, depth: int = 0, cwd: str | None = None) -> tuple
         if cmd in SHELLS and '-c' in args:
             idx = args.index('-c')
             if idx + 1 < len(args):
-                bump(*evaluate_bash(args[idx + 1], depth + 1, cwd))
+                bump(*evaluate_bash(args[idx + 1], depth + 1, cwd, top))
         elif cmd == 'eval' and args:
-            bump(*evaluate_bash(' '.join(args), depth + 1, cwd))
+            bump(*evaluate_bash(' '.join(args), depth + 1, cwd, top))
 
         # interpreter one-liners that delete files
         if PYTHON_RE.match(cmd) and '-c' in args:
@@ -1075,12 +1220,18 @@ def evaluate_bash(command: str, depth: int = 0, cwd: str | None = None) -> tuple
 
         # echo/printf '...' | sh  -> the echoed payload runs as shell
         if piped and prev_echo_payload is not None and cmd in SHELLS and shell_execs_stdin(args):
-            bump(*evaluate_bash(prev_echo_payload, depth + 1, cwd))
+            bump(*evaluate_bash(prev_echo_payload, depth + 1, cwd, top))
 
         # bash write destinations (sed -i / tee / cp / mv / ln)
         if not is_allowed_install(cmd, args):
             for tgt in write_targets(cmd, args):
                 bump(*check_write_path(tgt, cwd=cwd))
+
+        # pkill -f / pgrep -f whose pattern matches this very command line
+        if cmd in ('pkill', 'pgrep'):
+            bump(*check_self_pkill(cmd, args, top))
+        elif cmd == 'ssh':
+            bump(*scan_pkill_text(ssh_remote_command(args), top))
 
         bump(*check_exfil(cmd, args))
         bump(*check_command(cmd, args, cwd))
@@ -1166,6 +1317,12 @@ def log_action(log_dir: Path, tool_name: str, tool_input: dict, decision: str, r
         pass
 
 
+# Appended to every deny reason handed to the model (the log keeps the bare
+# reason); rules therefore never have to repeat it.
+DENY_SUFFIX = (" Use the alternative named here or report the block; don't reach "
+               'the same effect through another command form.')
+
+
 def main():
     try:
         input_data = json.load(sys.stdin)
@@ -1203,7 +1360,7 @@ def main():
     log_action(log_dir, tool_name, tool_input, decision, reason)
 
     if verdict == DENY:
-        print(f'BLOCKED: {reason}', file=sys.stderr)
+        print(f'BLOCKED: {reason}{DENY_SUFFIX}', file=sys.stderr)
         sys.exit(2)
     sys.exit(0)
 
