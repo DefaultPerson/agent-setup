@@ -13,6 +13,7 @@ Prerequisites: uv (python package manager), ffmpeg or mpv (audio for TTS).
 4. cp .claude/settings.example.json ~/.claude/settings.json
    # Windows: hooks and the status line run in Git Bash (install Git for Windows); keep the $HOME paths as they are
 5. cp CLAUDE.md ~/.claude/CLAUDE.md (optional — author's coding style and rules)
+   # machine-specific rules (paths, services, sudo habits) go in ~/.claude/rules/<name>.md, not in CLAUDE.md
 6. Install recommended plugins (see below)
 7. Add shell aliases (see below)
 8. Ask me for any preferences

@@ -25,6 +25,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- **CLAUDE.md / AGENTS.md** — rewritten from 134 lines of XML-wrapped principles into 25 rules in four sections (Replies, Work, Irreversible steps, Models and scale) plus three aliases, each rule tied to a failure class found in a session audit (done-claims without a real check, dropped request items, `pkill -f` killing its own shell, deletions beyond authorization, live-infra changes without a rollback, parallel sessions in one checkout, over-sized agent fan-outs) or to an author convention; style matched to the Claude Code 2.1.270 system prompt (no em-dashes, one or two sentences per bullet) so the file's formatting doesn't leak into replies. Machine-specific rules live in `~/.claude/rules/*.md`, not in this file.
 - **guard.py** — every deny reason handed to the model now ends with “Use the alternative named here or report the block; don't reach the same effect through another command form.”, appended once in `main()` (the JSONL log keeps the bare reason).
 - **skills** — `commit`, `push-and-pr`, `publish` (Claude Code + Codex) rewritten from step-by-step procedures into intent + constraints: the PR base is the repository's default branch instead of an assumed `main`, files are staged explicitly (no `git add -A`), the full diff is no longer injected into context. `publish` is a Claude Code skill with `disable-model-invocation`.
 - **settings.example.json** — one guard entry for `Bash|Edit|Write|MultiEdit|NotebookEdit|Read|Grep` with `timeout: 10` (was three entries without a timeout; `Grep` and `NotebookEdit` never reached the guard), timeouts on notification hooks, `permissions.defaultMode: "auto"`. The same file works on Windows: hooks run in Git Bash, where `$HOME` expands.
@@ -47,6 +48,7 @@ All notable changes to this project will be documented in this file.
 
 ### Removed
 
+- **CLAUDE.md / AGENTS.md** — `<self_reflection>` rubric (causes over-verification on Opus 5), `<answering_rules>` (expert role, TL;DR and the literal `<example>` block leaked into replies), `<coding_principles>` (43 lines the model applies without being told), the tables rule, the knowledge-cutoff rule, the Context7/`ultrathink` tooling notes and the tool list.
 - **.claude/commands/** — `ultrathink` (the keyword works natively), `prime` (replaced by `repo-context`), `release` (never used); `publish` moved to skills. Same for `.codex/skills/{ultrathink,prime,release}`; `.codex/skills/research` is no longer needed.
 - **settings.local.json.windows** — hooks on Windows run in Git Bash or PowerShell, and neither expands `%USERPROFILE%`: every guard call pointed at a missing file, exited 2 and blocked the tool.
 - **settings.example.json** — `enableAllProjectMcpServers` (auto-approved MCP servers from any cloned repository) and `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`.
