@@ -58,6 +58,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 
 - **statusline.py** — rate-limit segment disappeared entirely when the 5-hour window was absent (Claude Code drops a window once it resets, e.g. while idle); a missing window now renders as `-` (`-/76% (-/48h)`).
+- **guard.py** — path rules on Windows. `HOME` (`C:\Users\x`) was passed to `re.sub` as a replacement template, so every path check raised `bad escape \U` and the hook failed open: `rm -rf /`, reading `~/.ssh` keys and unhooking guard.py from settings were all allowed. Past that crash, `os.path.normpath` produced backslash paths the POSIX rules never matched, so every `rm -r` (even `./build`) was denied as a top-level directory, while `C:\…` tool paths skipped the `~/.ssh` directory and settings checks. Paths are now normalized to one lowercase form before any check (`C:\x`, `C:/x` and Git Bash `/c/x` all become `/c/x`), `$USERPROFILE` expands like `$HOME`, and on Windows `rm -r` of a drive root, `Windows`, `Program Files`, `ProgramData` or another profile under `Users` is denied and `~/AppData` is protected. POSIX behavior is unchanged. `test_guard.py` pins a `/home/def` POSIX host so the corpus gives the same verdicts on any machine, and adds 28 simulated Windows cases.
 
 ## 2026-04-06
 
