@@ -31,6 +31,7 @@ Known, accepted limitations (availability over adversary-proofing):
 
 import json
 import os
+import posixpath
 import re
 import shlex
 import subprocess
@@ -42,7 +43,33 @@ from pathlib import Path
 IS_WINDOWS = platform.system() == "Windows"
 SCRIPT_ROOT = Path(__file__).resolve().parents[1]
 IS_CODEX = bool(os.environ.get('CODEX_HOME')) or SCRIPT_ROOT.name == '.codex'
-HOME = str(Path.home())
+
+_DRIVE_RE = re.compile(r'^([A-Za-z]):(?=/|$)')
+_GITBASH_DRIVE_RE = re.compile(r'^/([A-Za-z])(?=/|$)')
+
+
+def to_posix(p: str) -> str:
+    """Canonical form for path checks. On Windows C:\\x, C:/x and Git Bash /c/x
+    all become /c/x, lowercased since NTFS is case-insensitive. No-op elsewhere."""
+    if not IS_WINDOWS or not p:
+        return p
+    p = _DRIVE_RE.sub(r'/\1', p.replace('\\', '/'))
+    return p.lower()
+
+
+def to_native(p: str) -> str:
+    """Inverse of to_posix for filesystem calls: /c/x -> c:/x on Windows."""
+    m = _GITBASH_DRIVE_RE.match(p) if IS_WINDOWS else None
+    if not m:
+        return p
+    return f'{m.group(1)}:{p[2:] or "/"}'  # bare /c is the drive root, not c: (cwd on c)
+
+
+def _realpath(p: str) -> str:
+    return to_posix(os.path.realpath(to_native(p)))
+
+
+HOME = to_posix(str(Path.home()))
 
 ALLOW, ASK, DENY = 0, 1, 2
 
@@ -300,11 +327,14 @@ def expand_path(p: str) -> str:
     if p == '~':
         return HOME
     if p.startswith('~/'):
-        return HOME + p[1:]
+        return HOME + to_posix(p[1:])
     # ${HOME}, ${HOME:?}, ${HOME:?msg}, ${HOME:-default}, $HOME
-    p = re.sub(r'\$\{HOME(?::[?+-][^}]*)?\}', HOME, p)
+    # callable repl: HOME is data, and a template would parse its backslashes
+    p = re.sub(r'\$\{HOME(?::[?+-][^}]*)?\}', lambda _: HOME, p)
     p = p.replace('$HOME', HOME)
-    return p
+    if IS_WINDOWS:  # Git Bash also exports the profile dir as USERPROFILE
+        p = re.sub(r'\$\{USERPROFILE\}|\$USERPROFILE\b', lambda _: HOME, p)
+    return to_posix(p)
 
 
 # ---------------------------------------------------------------------------
@@ -318,15 +348,37 @@ SYSTEM_TOP = {
 
 HOME_PROTECTED_TOP = {'.ssh', '.config', '.local', 'projects'}
 
+# Second component of a /<drive>/... path on Windows (paths are lowercased).
+WINDOWS_SYSTEM_TOP = {
+    'windows', 'program files', 'program files (x86)', 'programdata',
+    'recovery', 'boot', '$recycle.bin', 'system volume information',
+}
+
 
 def _is_protected_home_top(name: str) -> bool:
-    return name in HOME_PROTECTED_TOP or name.startswith('.claude')
+    return (name in HOME_PROTECTED_TOP or name.startswith('.claude')
+            or (IS_WINDOWS and name == 'appdata'))
+
+
+def _windows_drive_verdict(parts: list[str]) -> str | None:
+    """Why a /<drive>/... path is too broad for rm -r on Windows, else None."""
+    if not (IS_WINDOWS and parts and len(parts[0]) == 1):
+        return None
+    if len(parts) == 1:
+        return 'drive root'
+    if parts[1] in WINDOWS_SYSTEM_TOP:
+        return 'system path'
+    if parts[1] == 'users' and len(parts) <= 3:
+        return 'user profile root'
+    if len(parts) == 2:
+        return 'top-level directory'
+    return None
 
 
 def _resolve_dir(cwd: str | None) -> str | None:
     if not cwd:
         return None
-    return os.path.normpath(expand_path(cwd))
+    return posixpath.normpath(expand_path(cwd))
 
 
 def classify_rm_target(t: str, cwd: str | None = None) -> tuple[int, str | None]:
@@ -342,7 +394,8 @@ def classify_rm_target(t: str, cwd: str | None = None) -> tuple[int, str | None]
         if base is None:
             return ALLOW, None
         parts = [x for x in base.split('/') if x]
-        if base == '/' or base == HOME or (parts and parts[0] in SYSTEM_TOP):
+        if (base == '/' or base == HOME or (parts and parts[0] in SYSTEM_TOP)
+                or _windows_drive_verdict(parts)):
             return DENY, f'rm -r * in {base}: wildcard wipe of a sensitive directory'
         return ALLOW, None
 
@@ -354,14 +407,14 @@ def classify_rm_target(t: str, cwd: str | None = None) -> tuple[int, str | None]
 
     if not core.startswith('/'):
         if cwd:
-            base = os.path.normpath(os.path.join(_resolve_dir(cwd), core))
+            base = posixpath.normpath(posixpath.join(_resolve_dir(cwd), core))
         else:
-            norm = os.path.normpath(core)
+            norm = posixpath.normpath(core)
             if norm in ('.', '..') or norm.startswith('../'):
                 return DENY, f'rm -r {t}: current/parent directory — name the target explicitly'
             return ALLOW, None
     else:
-        base = os.path.normpath(core)
+        base = posixpath.normpath(core)
 
     if base in ('/', ''):
         return DENY, f'rm -r {t}: filesystem root'
@@ -375,6 +428,9 @@ def classify_rm_target(t: str, cwd: str | None = None) -> tuple[int, str | None]
     parts = [x for x in base.split('/') if x]
     if not parts:
         return DENY, f'rm -r {t}: filesystem root'
+    if IS_WINDOWS and len(parts[0]) == 1:  # /<drive>/...
+        why = _windows_drive_verdict(parts)
+        return (DENY, f'rm -r {t}: {why}') if why else (ALLOW, None)
     top = parts[0]
     if top == 'tmp' or base.startswith('/var/tmp') or base.startswith('/dev/shm'):
         return ALLOW, None
@@ -654,7 +710,7 @@ def classify_credential_path(path: str) -> str | None:
     if re.search(r'\.(pem|crt|cer)$', base):
         # a .pem/.crt/.cer is only secret if it actually holds a private key;
         # public CA certs with these extensions are safe to read.
-        return 'private key file' if _file_has_private_key(p) else None
+        return 'private key file' if _file_has_private_key(to_native(p)) else None
     return None
 
 
@@ -726,20 +782,24 @@ def check_upload(cmd: str, args: list[str]) -> tuple[int, str | None]:
     return ALLOW, None
 
 
-REPO_GUARD = HOME + '/projects/misc/agent-setup/.claude/hooks/guard.py'
-DEPLOYED_GUARDS = (HOME + '/.claude/hooks/guard.py', HOME + '/.claude-personal/hooks/guard.py')
+def _home_paths(home: str) -> tuple[str, tuple[str, str]]:
+    return (home + '/projects/misc/agent-setup/.claude/hooks/guard.py',
+            (home + '/.claude/hooks/guard.py', home + '/.claude-personal/hooks/guard.py'))
+
+
+REPO_GUARD, DEPLOYED_GUARDS = _home_paths(HOME)
 
 
 def is_deployed_guard(p: str) -> bool:
     try:
-        rp = os.path.realpath(p)
+        rp = _realpath(p)
     except OSError:
         rp = p
     for c in DEPLOYED_GUARDS:
         if p == c:
             return True
         try:
-            if rp == os.path.realpath(c):
+            if rp == _realpath(c):
                 return True
         except OSError:
             pass
@@ -765,12 +825,12 @@ def is_allowed_install(cmd: str, args: list[str]) -> bool:
     if len(pos) != 2:
         return False
     try:
-        src = os.path.realpath(expand_path(pos[0]))
+        src = _realpath(expand_path(pos[0]))
     except OSError:
         src = expand_path(pos[0])
-    dst = os.path.normpath(expand_path(pos[1]))
+    dst = posixpath.normpath(expand_path(pos[1]))
     try:
-        repo = os.path.realpath(REPO_GUARD)
+        repo = _realpath(REPO_GUARD)
     except OSError:
         repo = REPO_GUARD
     return src == repo and dst == HOME + '/.claude/hooks/guard.py'
@@ -814,7 +874,7 @@ def check_write_path(path: str, content=None, tool_name=None, edits=None,
         return ALLOW, None
     p = expand_path(path)
     if cwd and not p.startswith('/'):
-        p = os.path.normpath(os.path.join(_resolve_dir(cwd), p))
+        p = posixpath.normpath(posixpath.join(_resolve_dir(cwd), p))
 
     m = re.search(r'(?:^|[/\\])\.ssh[/\\](.+)$', p)
     if m:

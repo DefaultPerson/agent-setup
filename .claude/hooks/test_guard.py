@@ -237,11 +237,56 @@ TOOL_CASES = [
     (A, 'NotebookEdit', {'notebook_path': '/home/def/projects/x/nb.ipynb'}),
 ]
 
+# Windows host, simulated with set_host() on any OS: Claude Code passes cwd and
+# file paths as C:\..., while Git Bash commands use /c/..., C:/... or ~.
+WIN_HOME = 'C:\\Users\\def'
+WIN_CWD = 'C:\\Users\\def\\src\\app'
+WINDOWS_CASES = [
+    (D, 'Bash', {'command': 'rm -rf /'}),
+    (D, 'Bash', {'command': 'rm -rf ~'}),
+    (D, 'Bash', {'command': 'rm -rf "${HOME}"'}),  # was a re.sub template crash -> fail-open
+    (D, 'Bash', {'command': 'rm -rf "$USERPROFILE"'}),
+    (D, 'Bash', {'command': 'rm -rf ~/.ssh'}),
+    (D, 'Bash', {'command': 'rm -rf ~/AppData'}),
+    (D, 'Bash', {'command': 'rm -rf C:/Users/def'}),
+    (D, 'Bash', {'command': 'rm -rf /c/Users'}),
+    (D, 'Bash', {'command': 'rm -rf /c/Users/other'}),
+    (D, 'Bash', {'command': "rm -rf 'C:\\Windows'"}),
+    (D, 'Bash', {'command': 'rm -rf "/c/Program Files"'}),
+    (D, 'Bash', {'command': 'rm -rf /c'}),
+    (D, 'Bash', {'command': 'rm -rf C:/foo'}),
+    (D, 'Bash', {'command': 'rm -rf ../../..'}),
+    (D, 'Bash', {'command': 'find ~ -mindepth 1 -delete'}),
+    (A, 'Bash', {'command': 'rm -rf ./build'}),
+    (A, 'Bash', {'command': 'rm -rf build dist'}),
+    (A, 'Bash', {'command': 'rm -rf ../other-app'}),
+    (A, 'Bash', {'command': 'rm -rf C:/Users/def/src/app/build'}),
+    (A, 'Bash', {'command': 'rm -rf /c/Users/def/src/app/node_modules'}),
+    (A, 'Bash', {'command': 'rm -rf ~/Downloads/old'}),
+    (A, 'Bash', {'command': 'rm -rf /tmp/x'}),
+    (D, 'Read', {'file_path': 'C:\\Users\\def\\.ssh\\id_ed25519'}),
+    (A, 'Read', {'file_path': 'C:\\Users\\def\\.SSH\\config'}),
+    (D, 'Grep', {'pattern': 'x', 'path': 'C:\\Users\\def\\.ssh'}),
+    (D, 'Edit', {'file_path': 'C:\\Users\\def\\.claude\\hooks\\guard.py'}),
+    (D, 'Write', {'file_path': 'C:\\Users\\def\\.claude\\settings.json',
+                  'content': '{"disableAllHooks": true}'}),
+    (A, 'Edit', {'file_path': 'C:\\Users\\def\\src\\app\\main.py'}),
+]
+
 NAMES = {A: 'ALLOW', D: 'DENY'}
+
+
+def set_host(windows: bool, home: str) -> None:
+    """Point the guard at a host: the corpus pins /home/def so it is machine-independent."""
+    guard.IS_WINDOWS = windows
+    guard.HOME = guard.to_posix(home)
+    guard.REPO_GUARD, guard.DEPLOYED_GUARDS = guard._home_paths(guard.HOME)
 
 
 def run():
     failures = []
+    real_host = (guard.IS_WINDOWS, guard.HOME)
+    set_host(False, '/home/def')
 
     # No case may expect ASK.
     for expected, *_ in BASH_CASES:
@@ -267,6 +312,13 @@ def run():
         got, reason = guard.evaluate(tool, tin)
         if got != expected:
             failures.append(f'  [{NAMES[expected]} != {NAMES[got]}] {tool} {tin}  ({reason})')
+
+    set_host(True, WIN_HOME)
+    for expected, tool, tin in WINDOWS_CASES:
+        got, reason = guard.evaluate(tool, tin, WIN_CWD)
+        if got != expected:
+            failures.append(f'  [{NAMES[expected]} != {NAMES[got]}] (windows) {tool} {tin}  ({reason})')
+    set_host(*real_host)
 
     # .pem is a secret only if it actually contains a private key (fix 7).
     with tempfile.TemporaryDirectory() as td:
@@ -304,7 +356,7 @@ def run():
             failures.append(f'  [deny suffix missing] exit={proc.returncode} '
                             f'stderr={proc.stderr.strip()!r}')
 
-    total = len(BASH_CASES) + len(TOOL_CASES) + len(UNIT_CASES) + 4
+    total = len(BASH_CASES) + len(TOOL_CASES) + len(UNIT_CASES) + len(WINDOWS_CASES) + 4
     if failures:
         print(f'FAIL: {len(failures)}/{total} cases')
         print('\n'.join(failures))
