@@ -360,9 +360,13 @@ def _is_protected_home_top(name: str) -> bool:
             or (IS_WINDOWS and name == 'appdata'))
 
 
-def _windows_drive_verdict(parts: list[str]) -> str | None:
-    """Why a /<drive>/... path is too broad for rm -r on Windows, else None."""
-    if not (IS_WINDOWS and parts and len(parts[0]) == 1):
+def _windows_drive_verdict(parts: list[str], base: str) -> str | None:
+    """Why a /<drive>/... or //server/share path is too broad for rm -r on Windows."""
+    if not (IS_WINDOWS and parts):
+        return None
+    if base.startswith('//'):  # UNC \\server\share: only the share root is too broad
+        return 'network share' if len(parts) <= 2 else None
+    if len(parts[0]) != 1:
         return None
     if len(parts) == 1:
         return 'drive root'
@@ -395,7 +399,7 @@ def classify_rm_target(t: str, cwd: str | None = None) -> tuple[int, str | None]
             return ALLOW, None
         parts = [x for x in base.split('/') if x]
         if (base == '/' or base == HOME or (parts and parts[0] in SYSTEM_TOP)
-                or _windows_drive_verdict(parts)):
+                or _windows_drive_verdict(parts, base)):
             return DENY, f'rm -r * in {base}: wildcard wipe of a sensitive directory'
         return ALLOW, None
 
@@ -428,8 +432,8 @@ def classify_rm_target(t: str, cwd: str | None = None) -> tuple[int, str | None]
     parts = [x for x in base.split('/') if x]
     if not parts:
         return DENY, f'rm -r {t}: filesystem root'
-    if IS_WINDOWS and len(parts[0]) == 1:  # /<drive>/...
-        why = _windows_drive_verdict(parts)
+    if IS_WINDOWS and (len(parts[0]) == 1 or base.startswith('//')):  # /<drive>/... or UNC
+        why = _windows_drive_verdict(parts, base)
         return (DENY, f'rm -r {t}: {why}') if why else (ALLOW, None)
     top = parts[0]
     if top == 'tmp' or base.startswith('/var/tmp') or base.startswith('/dev/shm'):

@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **.github/workflows/guard.yml** — the guard corpus runs on ubuntu, windows and macos on every push and PR, plus a job asserting `.claude/hooks/guard.py` and `.codex/hooks/guard.py` are byte-identical. A platform-specific crash in the guard fails open silently, so it has to be caught by CI rather than by whoever happens to run that platform.
 - **guard.py** — `pkill -f` / `pgrep -f` self-match rule: a full-match pattern (`-f`, `--full`, `-ef`, `-9f`, also after `sudo`/`timeout`, inside `bash -c`, `$(…)`, backticks, pipes and `ssh host '…'`) that matches the command line it is part of is denied, because the Bash tool's own `bash -c "<command>"` shell is in that pattern's way and dies with it (exit 144); `pgrep` is denied only when its output feeds a `kill`, and `[p]attern` or anchored patterns stay allowed.
 - **guard.py** — `GUARD_PROTECTED_UNITS` (comma/whitespace separated unit names, with or without `.service`): `systemctl stop|restart|disable|kill|mask|try-restart|reload-or-restart` on a listed unit is denied, while `status`, `start`, `show`, `cat`, `list-units` and `daemon-reload` stay allowed.
 - **.claude/skills/repo-context** — compact repository snapshot collected with `!` injections before the model runs; replaces `/prime`.
@@ -57,6 +58,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- **guard.py** — `rm -r` of a UNC share root on Windows (`//server/share`, `\\server\share`) was allowed: the drive-letter check did not match a `//` path, so it fell through to the POSIX ladder and no rule covered it. It is now denied as `network share`, the Windows counterpart of the existing `/mnt`, `/media` rule; paths inside a share (`//server/share/build`) stay allowed.
 - **statusline.py** — rate-limit segment disappeared entirely when the 5-hour window was absent (Claude Code drops a window once it resets, e.g. while idle); a missing window now renders as `-` (`-/76% (-/48h)`).
 - **guard.py** — path rules on Windows. `HOME` (`C:\Users\x`) was passed to `re.sub` as a replacement template, so every path check raised `bad escape \U` and the hook failed open: `rm -rf /`, reading `~/.ssh` keys and unhooking guard.py from settings were all allowed. Past that crash, `os.path.normpath` produced backslash paths the POSIX rules never matched, so every `rm -r` (even `./build`) was denied as a top-level directory, while `C:\…` tool paths skipped the `~/.ssh` directory and settings checks. Paths are now normalized to one lowercase form before any check (`C:\x`, `C:/x` and Git Bash `/c/x` all become `/c/x`), `$USERPROFILE` expands like `$HOME`, and on Windows `rm -r` of a drive root, `Windows`, `Program Files`, `ProgramData` or another profile under `Users` is denied and `~/AppData` is protected. POSIX behavior is unchanged. `test_guard.py` pins a `/home/def` POSIX host so the corpus gives the same verdicts on any machine, and adds 28 simulated Windows cases.
 
