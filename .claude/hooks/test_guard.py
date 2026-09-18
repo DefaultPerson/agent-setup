@@ -255,6 +255,9 @@ WINDOWS_CASES = [
     (D, 'Bash', {'command': 'rm -rf "/c/Program Files"'}),
     (D, 'Bash', {'command': 'rm -rf /c'}),
     (D, 'Bash', {'command': 'rm -rf C:/foo'}),
+    (D, 'Bash', {'command': 'rm -rf //fileserver/share'}),  # UNC \\server\share
+    (D, 'Bash', {'command': 'rm -rf //fileserver'}),
+    (A, 'Bash', {'command': 'rm -rf //fileserver/share/build'}),
     (D, 'Bash', {'command': 'rm -rf ../../..'}),
     (D, 'Bash', {'command': 'find ~ -mindepth 1 -delete'}),
     (A, 'Bash', {'command': 'rm -rf ./build'}),
